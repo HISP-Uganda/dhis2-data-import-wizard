@@ -1,0 +1,27 @@
+td, th {
+    padding: 0.25em;
+}
+
+thead th {
+    position: -webkit-sticky; /* for Safari */
+    position: sticky;
+    top: 0;
+    background: #FAFAFA;
+    color: #FFF;
+    z-index: 10;
+}
+
+thead th:first-child {
+    left: 0;
+    z-index: 20;
+}
+
+tbody th {
+    position: -webkit-sticky; /* for Safari */
+    position: sticky;
+    left: 0;
+    background: #FFF;
+    z-index: 10;
+    border-right: 1px solid #CCC;
+}
+

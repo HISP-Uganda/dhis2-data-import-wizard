@@ -1,0 +1,23 @@
+{
+  "launch_path": "index.html",
+  "default_locale": "en",
+  "activities": {
+    "dhis": {
+      "href": ".."
+    }
+  },
+  "appType": "APP",
+  "name": "Data Import Wizard",
+  "version": "1.0.2",
+  "description": "Data Importer Wizard",
+  "icons": {
+    "48": "favicon.ico"
+  },
+  "developer": {
+    "name": "HISP Uganda"
+  },
+  "dhis2": {
+    "apiVersion": "29"
+  },
+  "manifest_generated_at": "Mon Jul 16 2018 19:26:06 GMT+0300 (EAT)"
+}

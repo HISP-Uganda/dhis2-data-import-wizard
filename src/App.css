@@ -1,33 +1,274 @@
-.App {
-  text-align: center;
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-.App-logo {
-  animation: App-logo-spin infinite 20s linear;
-  height: 40vmin;
-  pointer-events: none;
+a {
+  color: #409890;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+* {
+  margin: 0;
+  padding: 0;
+  /*font-size: inherit;*/
+  /*box-sizing: inherit;*/
 }
 
-.App-link {
-  color: #61dafb;
+/*.headerRow {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    background-color: #4db6ac;
+    flex-shrink: 0;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.logo {
+    width: 35px;
+    height: 35px;
 }
+
+.logoRow {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ReactVirtualizedContainer {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin: 0.25rem;
+}
+.LogoColumn {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 0 1rem;
+    text-transform: uppercase;
+}
+.PrimaryLogoText,
+.SecondaryLogoText {
+    text-transform: lowercase;
+    font-size: 2em;
+}
+.PrimaryLogoText {
+    font-weight: bold;
+    color: #272727;
+    margin: 0 .5em;
+}
+.SecondaryLogoText {
+    color: #ffffff;
+}
+
+.NavList {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.8rem;
+}
+
+.ComponentList,
+.HighOrderComponentList {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.7rem;
+}
+.ComponentList {
+    background-color: #272727;
+}
+.HighOrderComponentList {
+    background-color: #111;
+}
+
+.demo {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+.Body {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+}*/
+/*.ScrollingBody {
+    composes: Body;
+    overflow: auto;
+    flex: 1 1 auto;
+}*/
+/*.column {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+}
+
+.ComponentLink {
+    display: list-item;
+    background: none;
+    border: none;
+    padding: .6rem;
+    color: #bdbdbd;
+    cursor: pointer;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: .2s all;
+}
+.ComponentLink:hover {
+    color: #fff;
+}
+.ComponentLink:focus {
+    outline: none;
+    background: rgba(255,255,255,.08);
+}
+.ActiveComponentLink {
+    color: #fff;
+}
+.DisabledComponentLink {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+
+
+.loader:empty {
+    position: absolute;
+    top: calc(50% - 4em);
+    left: calc(50% - 4em);
+    width: 6em;
+    height: 6em;
+    border: 1.1em solid rgba(0, 0, 0, 0.2);
+    border-left: 1.1em solid #000000;
+    border-radius: 50%;
+    animation: load8 1.1s infinite linear;
+}
+
+@keyframes load8 {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}*/
+
+
+/*.App-bottom {
+    margin-top: 20px;
+}
+
+.App-title {
+    font-size: 1.5em;
+}
+
+.App-intro {
+    font-size: large;
+}
+
+.App-left {
+    width: 50%;
+    display: inline-block;
+}
+
+.App-right {
+    width: 50%;
+    display: inline-block;
+}*/
+
+/*.btn-direct {
+    background-color: #ddd;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    font-size: 15px;
+    border-radius: 2px;
+    margin-left: 130px;
+    margin-top: 50px;
+    cursor: pointer;
+}
+.btn-worker {
+    background-color: #e56;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    font-size: 15px;
+    border-radius: 2px;
+    margin-left: 130px;
+    margin-top: 50px;
+    cursor: pointer;
+}
+.text-center {
+    text-align: center;
+    margin-left: 130px;
+
+}*/
+
+/*
+.d2-ui-table__headers__header {
+    height: 50px;
+    padding: 0 1.6rem;
+    vertical-align: middle;
+    border-bottom: 2px solid #E0E0E0;
+    color: black;
+    display: table-cell;
+    font-weight: bold;
+    text-align: left;
+    font-size: 12px;
+    transition: all .3s ease; }*/
+
+
+.d2-ui-table {
+  /*margin: 0 auto;*/
+  /*width: 75vw;*/
+}
+
+.scrollable {
+  max-height: 500px;
+  overflow: auto;
+}
+
+/*.scrollable table {
+    position: relative;
+    border-collapse: collapse;
+}
+
+.scrollable td, th {
+    padding: 0.25em;
+}
+
+.scrollable thead th {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    background: #000;
+    color: #FFF;
+}
+
+.scrollable thead th:first-child {
+    left: 0;
+    z-index: 1;
+}
+
+.scrollable tbody th {
+    position: -webkit-sticky;
+    position: sticky;
+    left: 0;
+    background: #FFF;
+    border-right: 1px solid #CCC;
+}*/
+
+
+/*td { min-width: 500px; }*/
