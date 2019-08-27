@@ -21,7 +21,7 @@ class Step1 extends React.Component {
     }
 
     componentDidMount() {
-        this.integrationStore.setSearch('');
+        this.integrationStore.setSearch('', 'step1');
         this.integrationStore.fetchPrograms();
     }
 
@@ -33,16 +33,17 @@ class Step1 extends React.Component {
                 type="text"
                 fullWidth
                 value={this.integrationStore.search}
-                onChange={(value) => this.integrationStore.setSearch(value)}/>
+                onChange={(value) => this.integrationStore.setSearch(value, 'step1')}/>
             <Table
                 columns={['displayName', 'programType', 'lastUpdated']}
-                rows={this.integrationStore.currentPrograms}
+                rows={this.integrationStore.programs}
                 contextMenuActions={this.integrationStore.multipleCma}
                 primaryAction={this.integrationStore.executeEditIfAllowed}
             />
             <TablePagination
                 component="div"
-                count={this.integrationStore.searchedPrograms.length}
+                count={this.integrationStore.totalPrograms}
+                rowsPerPageOptions={[5, 10, 25, 50, 100]}
                 rowsPerPage={this.integrationStore.paging['step1']['rowsPerPage']}
                 page={this.integrationStore.paging['step1']['page']}
                 backIconButtonProps={{

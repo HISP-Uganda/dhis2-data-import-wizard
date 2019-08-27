@@ -40,7 +40,7 @@ class Schedule {
     }
 
     @computed get canAddDays() {
-        return this.schedule === 'Monthly' || this.schedule === 'Quarterly' || this.schedule === 'SixMonthly' || this.schedule === 'Yearly'
+        return this.schedule === 'Weekly' || this.schedule === 'Monthly' || this.schedule === 'Quarterly' || this.schedule === 'SixMonthly' || this.schedule === 'Yearly'
     }
 }
 

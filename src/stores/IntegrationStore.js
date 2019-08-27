@@ -5,6 +5,7 @@ import {callAxios2, postAxios} from '../utils/data-utils'
 import {convert, convertAggregate, convertSchedules} from './converters'
 import {NotificationManager} from "react-notifications";
 import Schedule from "./Schedule";
+import {convertDataToURL, encodeData} from "../utils/utils";
 
 
 configure({
@@ -71,6 +72,8 @@ class IntegrationStore {
     @observable aggregateJump = false;
     @observable loading = false;
     @observable open = true;
+    @observable totalDataSets = 0;
+    @observable totalPrograms = 0;
 
     @observable paging = {
         d1: {
@@ -97,11 +100,17 @@ class IntegrationStore {
         step25: {
             page: 0,
             rowsPerPage: 5
+        },
+        dataSets: {
+            page: 0,
+            rowsPerPage: 10
         }
 
     };
 
     @action setDialogOpen = val => this.dialogOpen = val;
+    @action setTotalDataSets = val => this.totalDataSets = val;
+    @action setTotalPrograms = val => this.totalPrograms = val;
     @action openDialog = () => this.setDialogOpen(true);
     @action closeDialog = () => this.setDialogOpen(false);
     @action openSchedule = () => this.setScheduled(true);
@@ -162,7 +171,6 @@ class IntegrationStore {
     };
 
     @action updateSchedule = args => {
-        console.log(args);
         this.setCurrentSchedule(args);
         this.openSchedule();
     };
@@ -226,8 +234,20 @@ class IntegrationStore {
         saveAs(blob, "data.json");
     };
 
-    @action setSearch = val => {
+    @action setSearch = async (val, what) => {
         this.search = val;
+        switch (what) {
+            case 'd1':
+                await this.fetchDataSets();
+                break;
+            case 'step1':
+                await this.fetchPrograms();
+                break;
+            default:
+                console.log('Nothing to do');
+        }
+
+
     };
 
     @action downloadProgramData = () => {
@@ -564,16 +584,46 @@ class IntegrationStore {
     fetchPrograms = async () => {
         this.openDialog();
         const api = this.d2.Api.getApi();
+
+        let params = [{
+            param: 'page',
+            value: this.paging.step1.page + 1
+
+        }, {
+            param: 'pageSize',
+            value: this.paging.step1.rowsPerPage
+        }, {
+            param: 'fields',
+            value: 'id,name,displayName,lastUpdated,programType,trackedEntityType,trackedEntity,programTrackedEntityAttributes[mandatory,valueType,trackedEntityAttribute[id,code,name,displayName,unique,optionSet[options[name,code]]]],programStages[id,name,displayName,repeatable,programStageDataElements[compulsory,dataElement[id,code,valueType,name,displayName,optionSet[options[name,code]]]]],organisationUnits[id,code,name]'
+        }, {
+            param: 'order',
+            value: 'name:asc'
+        }];
+
+        if (this.search !== '') {
+            params = [...params, {
+                param: 'filter',
+                value: `name:ilike:${this.search}`
+            }, {
+                param: 'filter',
+                value: `code:like:${this.search}`
+            }, {
+                param: 'rootJunction',
+                value: 'OR'
+            }]
+        }
+
+        const stringParams = convertDataToURL(params);
+
         try {
-            const {programs} = await api.get('programs', {
-                paging: false,
-                fields: 'id,name,displayName,lastUpdated,programType,trackedEntityType,trackedEntity,programTrackedEntityAttributes[mandatory,valueType,trackedEntityAttribute[id,code,name,displayName,unique,optionSet[options[name,code]]]],programStages[id,name,displayName,repeatable,programStageDataElements[compulsory,dataElement[id,code,valueType,name,displayName,optionSet[options[name,code]]]]],organisationUnits[id,code,name]'
-            });
+            const {programs, pager: {total}} = await api.get(`programs?${stringParams}`);
             this.setPrograms(programs);
+            this.setTotalPrograms(total);
             this.toggleLoading(false);
             this.closeDialog();
         } catch (e) {
             NotificationManager.error(`${e.message} could not fetch programs`, 'Error', 5000);
+            console.log(e);
             this.closeDialog();
         }
     };
@@ -582,11 +632,40 @@ class IntegrationStore {
     fetchDataSets = async () => {
         this.openDialog();
         const api = this.d2.Api.getApi();
+
+        let params = [{
+            param: 'page',
+            value: this.paging.d1.page + 1
+
+        }, {
+            param: 'pageSize',
+            value: this.paging.d1.rowsPerPage
+        }, {
+            param: 'fields',
+            value: 'id,name,code,periodType,categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]],dataSetElements[dataElement[id,name,code,valueType,categoryCombo[id,name,categoryOptionCombos[id,name]]]],organisationUnits[id,name,code],organisationUnits[id,name,code]'
+        }, {
+            param: 'order',
+            value: 'name:asc'
+        }];
+
+        if (this.search !== '') {
+            params = [...params, {
+                param: 'filter',
+                value: `name:ilike:${this.search}`
+            }, {
+                param: 'filter',
+                value: `code:like:${this.search}`
+            }, {
+                param: 'rootJunction',
+                value: 'OR'
+            }]
+        }
+
+        const stringParams = convertDataToURL(params);
+
+
         try {
-            let {dataSets} = await api.get('dataSets', {
-                paging: false,
-                fields: 'id,name,code,periodType,categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]],dataSetElements[dataElement[id,name,code,valueType,categoryCombo[id,name,categoryOptionCombos[id,name]]]],organisationUnits[id,name,code],organisationUnits[id,name,code]'
-            });
+            let {dataSets, pager: {total}} = await api.get(`dataSets?${stringParams}`);
             dataSets = dataSets.map(dataSet => {
                 const groupedDataElements = _.groupBy(dataSet['dataSetElements'], 'dataElement.categoryCombo.id');
 
@@ -618,6 +697,7 @@ class IntegrationStore {
             });
 
             this.setDataSets(dataSets);
+            this.setTotalDataSets(total);
             this.closeDialog();
         } catch (e) {
             this.closeDialog();
@@ -831,7 +911,7 @@ class IntegrationStore {
     };
 
     @action
-    handleChangeElementPage = what => (event, page) => {
+    handleChangeElementPage = what => async (event, page) => {
         const current = this.paging[what];
         const change = {};
         if (current) {
@@ -845,18 +925,27 @@ class IntegrationStore {
                 ...this.paging,
                 ...data
             };
-
             this.setPaging(p);
+            switch (what) {
+                case 'd1':
+                    await this.fetchDataSets();
+                    break;
+                case 'step1':
+                    await this.fetchPrograms();
+                    break;
+                default:
+                    console.log('Nothing to do');
+            }
         }
     };
 
     @action
-    handleChangeElementRowsPerPage = what => event => {
+    handleChangeElementRowsPerPage = what => async (event) => {
         const current = this.paging[what];
         const change = {};
         if (current) {
             change.rowsPerPage = event.target.value;
-            change.page = current.page;
+            change.page = 0;
             const data = _.fromPairs([
                 [what, change]
             ]);
@@ -866,6 +955,17 @@ class IntegrationStore {
             };
 
             this.setPaging(p);
+
+            switch (what) {
+                case 'd1':
+                    await this.fetchDataSets();
+                    break;
+                case 'step1':
+                    await this.fetchPrograms();
+                    break;
+                default:
+                    console.log('Nothing to do');
+            }
         }
     };
 
@@ -979,9 +1079,9 @@ class IntegrationStore {
     get nextLabel() {
         if (this.activeStep === 0) {
             return 'Create New Mapping';
-        } else if(this.activeStep === 5 && this.program.fetchingEntities === 1 && this.program.isTracker){
+        } else if (this.activeStep === 5 && this.program.fetchingEntities === 1 && this.program.isTracker) {
             return 'Fetching tracked entity instances'
-        }else if (this.activeStep === 6) {
+        } else if (this.activeStep === 6) {
             if (this.program.totalImports > 0 && this.program.processed.conflicts.length > 0) {
                 return 'Import With Conflicts';
             } else if (this.program.totalImports === 0) {
