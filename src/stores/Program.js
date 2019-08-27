@@ -613,9 +613,11 @@ class Program {
         const api = this.d2.Api.getApi();
         const events = eventsUpdate.map(event => {
             return event.dataValues.map(dataValue => {
-                return {event: {...event, dataValues: [dataValue]}, dataElement: dataValue.dataElement};
+                const {eventDate, ...others} = event;
+                return {event: {...others, dataValues: [dataValue]}, dataElement: dataValue.dataElement};
             });
         });
+
         return _.flatten(events).map(ev => {
             return api.update('events/' + ev.event.event + '/' + ev.dataElement, ev.event, {})
         })

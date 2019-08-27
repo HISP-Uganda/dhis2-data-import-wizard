@@ -35,6 +35,12 @@ export const encodeData = (objs) => {
     }).join('&');
 };
 
+export const convertDataToURL = (objs) => {
+    return objs.map(s => {
+        return s.param + '=' + s.value
+    }).join('&');
+};
+
 export const enumerateDates = (startDate, endDate, addition, format) => {
     const dates = [];
     const currDate = moment(startDate).startOf(addition);

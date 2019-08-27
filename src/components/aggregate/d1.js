@@ -23,7 +23,7 @@ class D1 extends React.Component {
     }
 
     componentDidMount() {
-        this.integrationStore.setSearch('');
+        this.integrationStore.setSearch('', 'd1');
         this.integrationStore.fetchDataSets();
     }
 
@@ -35,15 +35,16 @@ class D1 extends React.Component {
                 type="text"
                 fullWidth
                 value={this.integrationStore.search}
-                onChange={(value) => this.integrationStore.setSearch(value)}/>
+                onChange={(value) => this.integrationStore.setSearch(value, 'd1')}/>
             <Table
                 columns={['name', 'code']}
-                rows={this.integrationStore.currentDataSets}
+                rows={this.integrationStore.dataSets}
                 primaryAction={this.integrationStore.executeEditIfAllowedAgg}
             />
             <TablePagination
+                rowsPerPageOptions={[5, 10, 25, 50, 100]}
                 component="div"
-                count={this.integrationStore.searchedDataSets.length}
+                count={this.integrationStore.totalDataSets}
                 rowsPerPage={this.integrationStore.paging['d1']['rowsPerPage']}
                 page={this.integrationStore.paging['d1']['page']}
                 backIconButtonProps={{
