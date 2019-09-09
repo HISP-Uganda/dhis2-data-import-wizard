@@ -17,7 +17,7 @@
     "name": "HISP Uganda"
   },
   "dhis2": {
-    "apiVersion": "29"
+    "apiVersion": "28"
   },
   "manifest_generated_at": "Mon Jul 16 2018 19:26:06 GMT+0300 (EAT)"
 }
