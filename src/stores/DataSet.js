@@ -1,4 +1,4 @@
-import {action, computed, observable} from "mobx";
+import { action, computed, observable } from "mobx";
 import _ from 'lodash';
 import XLSX from "xlsx";
 import {
@@ -12,11 +12,11 @@ import {
     callAxios,
     postAxios
 } from '../utils/data-utils'
-import {processMergedCells} from './converters'
-import {generate} from 'shortid';
-import {NotificationManager} from "react-notifications";
+import { processMergedCells } from './converters'
+import { generate } from 'shortid';
+import { NotificationManager } from "react-notifications";
 import Param from "./Param";
-import {Store as GroupStore} from '@dhis2/d2-ui-core';
+import { Store as GroupStore } from '@dhis2/d2-ui-core';
 import OrganisationUnit from "./OrganisationUnit";
 import moment from "moment";
 
@@ -243,7 +243,7 @@ class DataSet {
 
     @action filterChange = val => this.filterText = val;
 
-    @action  setSelectedIndicators = val => this.selectedIndicators = val;
+    @action setSelectedIndicators = val => this.selectedIndicators = val;
     @action handelURLChange = value => {
         this.url = value;
         if (this.url !== '') {
@@ -305,7 +305,7 @@ class DataSet {
                     }
                 }
                 if (foundOU) {
-                    org.setMapping({label: foundOU.name, value: foundOU.id});
+                    org.setMapping({ label: foundOU.name, value: foundOU.id });
                 }
                 return org
 
@@ -483,7 +483,7 @@ class DataSet {
                     }
                 }
                 if (foundOU) {
-                    org.setMapping({label: foundOU.name, value: foundOU.id});
+                    org.setMapping({ label: foundOU.name, value: foundOU.id });
                 }
                 return org;
             });
@@ -534,7 +534,7 @@ class DataSet {
 
             if (levelResponse) {
                 const levels = levelResponse.organisationUnitLevels.map(l => {
-                    return {label: l.name, value: l.level}
+                    return { label: l.name, value: l.level }
                 });
 
                 this.setLevels(levels);
@@ -542,7 +542,7 @@ class DataSet {
 
             if (data) {
                 const dataSets = data.dataSets.map(d => {
-                    return {label: d.name, value: d.id};
+                    return { label: d.name, value: d.id };
                 });
                 this.setDhis2DataSets(dataSets);
             }
@@ -627,7 +627,7 @@ class DataSet {
 
                 if (levelResponse) {
                     const levels = levelResponse.organisationUnitLevels.map(l => {
-                        return {label: l.name, value: l.level}
+                        return { label: l.name, value: l.level }
                     });
 
                     this.setLevels(levels);
@@ -761,10 +761,10 @@ class DataSet {
         if (urlBase) {
             this.openDialog();
             await this.loadLevelsAndDataSets();
-            this.setDataElementColumn({label: 'dataElement', value: 'dataElement'});
-            this.setCategoryOptionComboColumn({label: 'categoryOptionCombo', value: 'categoryOptionCombo'});
-            this.setPeriodColumn({label: 'period', value: 'period'});
-            this.setDataValueColumn({label: 'value', value: 'value'});
+            this.setDataElementColumn({ label: 'dataElement', value: 'dataElement' });
+            this.setCategoryOptionComboColumn({ label: 'categoryOptionCombo', value: 'categoryOptionCombo' });
+            this.setPeriodColumn({ label: 'period', value: 'period' });
+            this.setDataValueColumn({ label: 'value', value: 'value' });
 
             const p1 = new Param();
             p1.setParam('dataElementIdScheme');
@@ -792,8 +792,8 @@ class DataSet {
             this.replaceParam(p4);
             this.replaceParam(p5);
 
-            this.setOrgUnitStrategy({label: 'name', value: 'name'});
-            this.setOrgUnitColumn({label: 'orgUnit', value: 'orgUnit'});
+            this.setOrgUnitStrategy({ label: 'name', value: 'name' });
+            this.setOrgUnitColumn({ label: 'orgUnit', value: 'orgUnit' });
 
             this.closeDialog();
 
@@ -818,12 +818,11 @@ class DataSet {
             this.setWorkbook(workbook);
 
             const sheets = this.workbook.SheetNames.map(s => {
-                return {label: s, value: s}
+                return { label: s, value: s }
             });
 
             if (sheets.length > 0) {
                 this.setSelectedSheet(sheets[0]);
-                this.setWorkSheet(this.workbook.Sheets[this.selectedSheet.value]);
             }
             this.setSheets(sheets);
             this.setTemplate(1);
@@ -889,7 +888,7 @@ class DataSet {
 
                                 if (found) {
                                     const cocs = found.dataElement.categoryCombo.categoryOptionCombos.map(coc => {
-                                        return {label: coc.name, value: coc.name}
+                                        return { label: coc.name, value: coc.name }
                                     });
                                     search.setUniqueCategoryOptionCombos(cocs);
                                 } else {
@@ -1026,7 +1025,7 @@ class DataSet {
                                 [v]: r[i]
                             })));
                         }).map(v => {
-                            return {...v, value: Math.round(v.value)}
+                            return { ...v, value: Math.round(v.value) }
                         });
                         this.setPulledData(found);
                     } else {
@@ -1055,14 +1054,14 @@ class DataSet {
 
     @action completeDataSets = () => {
         const api = this.d2.Api.getApi();
-        return api.post('completeDataSetRegistrations', {completeDataSetRegistrations: this.whatToComplete}, {});
+        return api.post('completeDataSetRegistrations', { completeDataSetRegistrations: this.whatToComplete }, {});
     };
 
     @action create1 = () => {
         try {
             if (this.processed.dataValues && this.processed.dataValues.length > 0) {
                 this.setMessage(`Inserting ${this.processed.dataValues.length} of ${this.processed.dataValues.length}`);
-                return this.insertDataValues({dataValues: this.processed.dataValues});
+                return this.insertDataValues({ dataValues: this.processed.dataValues });
             }
         } catch (e) {
             this.setResponses(e);
@@ -1174,7 +1173,7 @@ class DataSet {
         this.setDisplayProgress(false);
         this.closeDialog();
 
-        const {importCount, conflicts} = this.processedResponses;
+        const { importCount, conflicts } = this.processedResponses;
         NotificationManager.success(`${importCount.imported}`, 'Imported');
         NotificationManager.success(`${importCount.deleted}`, 'Deleted');
         NotificationManager.success(`${importCount.updated}`, 'Updated');
@@ -1209,7 +1208,7 @@ class DataSet {
     };
 
     @action deleteAggregate = async aggregates => {
-        const mapping = _.findIndex(aggregates, {aggregateId: this.aggregateId});
+        const mapping = _.findIndex(aggregates, { aggregateId: this.aggregateId });
         aggregates.splice(mapping, 1);
 
         aggregates = aggregates.map(p => {
@@ -1227,13 +1226,13 @@ class DataSet {
     @action setMappingAll2 = de => val => {
         if (val && val.value) {
             let value = val.value;
-            value = {...value, column: de.column};
+            value = { ...value, column: de.column };
             val = {
                 ...val,
                 value
             };
             const obj = _.fromPairs([[de.name, val]]);
-            const c = {...this.cell2, ...obj};
+            const c = { ...this.cell2, ...obj };
             this.setCell2(c);
         } else {
             const final = _.omit(this.cell2, [de.name]);
@@ -1251,16 +1250,16 @@ class DataSet {
 
             if (match) {
                 let value = coc.value;
-                value = {...value, column: match.column};
+                value = { ...value, column: match.column };
                 coc = {
                     ...coc,
                     value
                 };
                 const obj = _.fromPairs([[coc.label, coc]]);
-                maps = {...maps, ...obj};
+                maps = { ...maps, ...obj };
             }
         });
-        maps = {...maps, ...this.cell2};
+        maps = { ...maps, ...this.cell2 };
         this.setCell2(maps);
     };
 
@@ -1310,7 +1309,7 @@ class DataSet {
                     }
                 }
                 if (foundOU) {
-                    org.setMapping({label: foundOU.name, value: foundOU.id});
+                    org.setMapping({ label: foundOU.name, value: foundOU.id });
                 }
                 return org
             });
@@ -1345,7 +1344,7 @@ class DataSet {
 
         this.responses.forEach(response => {
             if (response && (response['status'] === 'SUCCESS' || response['status'] === 'WARNING')) {
-                const {imported, deleted, updated, ignored} = response['importCount'];
+                const { imported, deleted, updated, ignored } = response['importCount'];
                 if (imported) {
                     importedTotal = importedTotal + imported
                 }
@@ -1364,12 +1363,12 @@ class DataSet {
 
                 if (response['conflicts']) {
                     const processedConflicts = response['conflicts'].map(c => {
-                        return {...c, id: generate()}
+                        return { ...c, id: generate() }
                     });
                     conflicts = [...conflicts, ...processedConflicts]
                 }
             } else if (response && response['httpStatusCode'] === 500) {
-                errors = [...errors, {...response['error']}];
+                errors = [...errors, { ...response['error'] }];
             }
         });
         const importCount = {
@@ -1378,7 +1377,7 @@ class DataSet {
             updated: updatedTotal,
             ignored: ignoredTotal
         };
-        return {errors, importCount, conflicts}
+        return { errors, importCount, conflicts }
     }
 
 
@@ -1386,19 +1385,19 @@ class DataSet {
         if (this.workSheet) {
             const range = XLSX.utils.decode_range(this.workSheet['!ref']);
             return _.range(0, range.e.c + 1).map(v => {
-                const cell = XLSX.utils.encode_cell({r: this.headerRow - 1, c: v});
+                const cell = XLSX.utils.encode_cell({ r: this.headerRow - 1, c: v });
                 const cellValue = this.workSheet[cell];
                 if (cellValue) {
-                    return {label: cellValue.v.toString(), value: cellValue.v.toString()};
+                    return { label: cellValue.v.toString(), value: cellValue.v.toString() };
                 } else {
-                    return {label: '', value: ''};
+                    return { label: '', value: '' };
                 }
             }).filter(c => {
                 return c.label !== '';
             });
         } else if (this.pulledData) {
             return _.keys(this.pulledData[0]).map(e => {
-                return {label: e, value: e}
+                return { label: e, value: e }
             });
         }
 
@@ -1414,7 +1413,7 @@ class DataSet {
         this.mergedCells.filter(e => {
             return e.s.r === this.headerRow - 1
         }).sort().forEach(val => {
-            const cell_address = {c: val.s.c, r: val.s.r};
+            const cell_address = { c: val.s.c, r: val.s.r };
             const cell_ref = XLSX.utils.encode_cell(cell_address);
 
             const dataElement = this.data[cell_ref]['v'];
@@ -1425,13 +1424,17 @@ class DataSet {
         const others = this.cellColumns.map(col => {
             const cell = col.value + this.headerRow;
             const name = this.data[cell];
-            return {name: name ? name['v'] : null, column: col.value};
+            return { name: name ? name['v'] : null, column: col.value };
         }).filter(d => {
             const match = processed.find(p => {
                 return p.column === d.column;
             });
-            return d.name !== null && d.column > this.dataStartColumn.value && !match;
+            const col1 = XLSX.utils.decode_col(d.column);
+            const col2 = XLSX.utils.decode_col(this.dataStartColumn.value);
+            return d.name !== null && col1 > col2 && !match;
         });
+
+        console.log(others);
 
         processed = [...processed, ...others];
 
@@ -1441,24 +1444,16 @@ class DataSet {
 
     @computed get processedDhis2DataSets() {
         return this.dhis2DataSets.map(ds => {
-            return {label: ds.name, value: ds}
+            return { label: ds.name, value: ds }
         });
     }
 
     @computed get cells() {
-        let foundCells = [];
         if (this.workSheet) {
-            const range = XLSX.utils.decode_range(this.workSheet['!ref']);
-            for (let R = range.s.r; R <= range.e.r; ++R) {
-                for (let C = range.s.c; C <= range.e.c; ++C) {
-                    const cell_address = {c: C, r: R};
-                    const cell_ref = XLSX.utils.encode_cell(cell_address);
-
-                    foundCells = [...foundCells, {label: cell_ref, value: cell_ref}];
-                }
-            }
+            const keys = _.keys(this.workSheet);
+            return keys;
         }
-        return foundCells;
+        return [];
     }
 
 
@@ -1475,13 +1470,12 @@ class DataSet {
             const range = XLSX.utils.decode_range(this.workSheet['!ref']);
             return _.range(0, range.e.c + 1).map(v => {
                 const cell_ref = XLSX.utils.encode_col(v);
-                return {label: cell_ref, value: cell_ref}
+                return { label: cell_ref, value: cell_ref }
             });
         }
 
         return [];
     }
-
 
     @computed get data() {
         if (this.workSheet) {
@@ -1492,9 +1486,8 @@ class DataSet {
                 });
                 return nest(data, [this.dataElementColumn.value]);
             } else if (this.cells.length > 0) {
-                return _.fromPairs(this.cells.map(c => {
-                    return [c.value, this.workSheet[c.value]]
-                }));
+                const d = _.omit(this.workSheet, ['!margins', '!merges', '!ref']);
+                return d;
             }
         } else if (this.pulledData) {
             if ((this.templateType.value === '4' || this.templateType.value === '6') && this.dataElementColumn) {
@@ -1525,7 +1518,7 @@ class DataSet {
                 f.categoryOptionCombos.forEach(coc => {
                     cocs = [...cocs, {
                         label: de.name + ': ' + coc.name,
-                        value: {dataElement: de.id, categoryOptionCombo: coc.id}
+                        value: { dataElement: de.id, categoryOptionCombo: coc.id }
                     }]
                 });
             });
@@ -1558,7 +1551,7 @@ class DataSet {
             return this.indicators.filter(i => {
                 return this.selectedIndicators.indexOf(i.value) !== -1;
             }).map(i => {
-                return {...i, label: i.text};
+                return { ...i, label: i.text };
             })
         }
 
@@ -1571,7 +1564,7 @@ class DataSet {
         });
 
         return _.uniqWith(p, _.isEqual).map(p => {
-            return {dataSet: this.id, organisationUnit: p.orgUnit, period: p.period}
+            return { dataSet: this.id, organisationUnit: p.orgUnit, period: p.period }
         });
     }
 
@@ -1585,17 +1578,17 @@ class DataSet {
 
         for (const f of this.forms) {
             for (const e of f.dataElements) {
-                dataElements = {...dataElements, [e.id]: e.name}
+                dataElements = { ...dataElements, [e.id]: e.name }
             }
             for (const c of f.categoryOptionCombos) {
-                categoryOptionCombos = {...categoryOptionCombos, [c.id]: c.name}
+                categoryOptionCombos = { ...categoryOptionCombos, [c.id]: c.name }
             }
         }
-        return {dataElements, categoryOptionCombos};
+        return { dataElements, categoryOptionCombos };
     }
 
     @computed get finalData() {
-        const {dataElements, categoryOptionCombos} = this.allDataElements;
+        const { dataElements, categoryOptionCombos } = this.allDataElements;
         return this.processed.dataValues.map((v, k) => {
             return {
                 ...v,
@@ -1628,7 +1621,7 @@ class DataSet {
     @computed get organisations() {
         if (this.organisationUnits) {
             return this.organisationUnits.map(o => {
-                return {label: o.name, value: o.id};
+                return { label: o.name, value: o.id };
             });
         }
 
@@ -1638,7 +1631,7 @@ class DataSet {
     @computed get organisationColumns() {
         if (this.organisationUnits) {
             return this.organisationUnits.map(o => {
-                return {label: o.name, value: o.id};
+                return { label: o.name, value: o.id };
             });
         }
         return [];
@@ -1648,13 +1641,13 @@ class DataSet {
         if (this.isDhis2) {
             if (this.dhis2DataSet) {
                 return this.dhis2DataSet.dataSetElements.map(dse => {
-                    return {label: dse.dataElement.name, value: dse.dataElement.name}
+                    return { label: dse.dataElement.name, value: dse.dataElement.name }
                 })
             }
             return [];
         } else {
             return _.keys(this.data).map(d => {
-                return {label: d, value: d}
+                return { label: d, value: d }
             });
         }
     }
@@ -1737,7 +1730,7 @@ class DataSet {
 
     @computed get categories() {
         return this.categoryCombo.categories.map(category => {
-            return {label: category.name, value: category.id}
+            return { label: category.name, value: category.id }
         })
     }
 

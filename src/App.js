@@ -1,9 +1,9 @@
-import React, {Component} from 'react';
-import {HashRouter as Router, Route} from "react-router-dom";
-import {NotificationContainer} from 'react-notifications';
+import React, { Component } from 'react';
+import { HashRouter as Router, Route } from "react-router-dom";
+import { NotificationContainer } from 'react-notifications';
 import 'react-notifications/lib/notifications.css';
 
-import {Provider} from "mobx-react";
+import { Provider } from "mobx-react";
 import * as PropTypes from 'prop-types';
 import IntegrationStore from './stores/IntegrationStore'
 import Program from './components/program';
@@ -11,10 +11,10 @@ import Program from './components/program';
 import D2UIApp from '@dhis2/d2-ui-app';
 import Aggregate from "./components/aggregate";
 import Schedule from "./components/schedule";
-import {withStyles} from "@material-ui/core/styles";
+import { withStyles } from "@material-ui/core/styles";
 import styles from "./components/styles";
 import HeaderBar from '@dhis2/d2-ui-header-bar';
-import {Link} from "react-router-dom";
+import { Link } from "react-router-dom";
 
 
 import {
@@ -24,7 +24,7 @@ import {
 import "antd/dist/antd.css";
 
 import './App.css';
-import {createMuiTheme} from "@material-ui/core";
+import { createMuiTheme } from "@material-ui/core";
 import MuiThemeProvider from "@material-ui/core/styles/MuiThemeProvider";
 
 const theme = createMuiTheme({
@@ -41,12 +41,12 @@ const theme = createMuiTheme({
 class App extends Component {
 
   onCollapse = (collapsed) => {
-    this.setState({collapsed});
+    this.setState({ collapsed });
   };
 
   constructor(props) {
     super(props);
-    const {d2} = props;
+    const { d2 } = props;
     d2.i18n.translations['id'] = 'Id';
     d2.i18n.translations['program_name'] = 'Program Name';
     d2.i18n.translations['program_type'] = 'Program Type';
@@ -116,55 +116,55 @@ class App extends Component {
   }
 
   getChildContext() {
-    return {d2: this.state.d2};
+    return { d2: this.state.d2 };
   }
 
   render() {
     return (
-        <Provider IntegrationStore={IntegrationStore}>
-          <Router>
-            <D2UIApp>
-              <MuiThemeProvider theme={theme}>
-                <HeaderBar d2={this.state.d2}/>
-                <div style={{height: 48}}/>
-                <Menu theme="light" defaultSelectedKeys={['1']} mode="horizontal">
-                  <Menu.Item key="1">
-                    <Link to="/">
-                      <Icon type="ordered-list"/>
-                      <span>Tracker</span>
-                    </Link>
-                  </Menu.Item>
-                  <Menu.Item key="2">
-                    <Link to="/aggregates">
-                      <Icon type="calculator"/>
-                      <span>Aggregate</span>
-                    </Link>
-                  </Menu.Item>
+      <Provider IntegrationStore={IntegrationStore}>
+        <Router>
+          <D2UIApp>
+            <MuiThemeProvider theme={theme}>
+              <HeaderBar d2={this.state.d2} />
+              <div style={{ height: 48 }} />
+              <Menu theme="light" defaultSelectedKeys={['1']} mode="horizontal">
+                <Menu.Item key="1">
+                  <Link to="/">
+                    <Icon type="ordered-list" />
+                    <span>Tracker</span>
+                  </Link>
+                </Menu.Item>
+                <Menu.Item key="2">
+                  <Link to="/aggregates">
+                    <Icon type="calculator" />
+                    <span>Aggregate</span>
+                  </Link>
+                </Menu.Item>
 
-                  <Menu.Item key="3">
-                    <Link to="/schedules">
-                      <Icon type="schedule"/>
-                      <span>Schedules</span>
-                    </Link>
-                  </Menu.Item>
-                </Menu>
-                <Route
-                    exact
-                    path='/'
-                    component={() => <Program d2={this.state.d2}
-                                              baseUrl={this.state.baseUrl}/>}/>
-                <Route
-                    path='/aggregates'
-                    component={() => <Aggregate d2={this.state.d2}/>}/>
+                <Menu.Item key="3">
+                  <Link to="/schedules">
+                    <Icon type="schedule" />
+                    <span>Schedules</span>
+                  </Link>
+                </Menu.Item>
+              </Menu>
+              <Route
+                exact
+                path='/'
+                component={() => <Program d2={this.state.d2}
+                  baseUrl={this.state.baseUrl} />} />
+              <Route
+                path='/aggregates'
+                component={() => <Aggregate d2={this.state.d2} />} />
 
-                <Route
-                    path='/schedules'
-                    component={() => <Schedule d2={this.state.d2}/>}/>
-                <NotificationContainer/>
-              </MuiThemeProvider>
-            </D2UIApp>
-          </Router>
-        </Provider>
+              <Route
+                path='/schedules'
+                component={() => <Schedule d2={this.state.d2} />} />
+              <NotificationContainer />
+            </MuiThemeProvider>
+          </D2UIApp>
+        </Router>
+      </Provider>
     );
   }
 }

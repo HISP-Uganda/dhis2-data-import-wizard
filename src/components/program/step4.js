@@ -1,5 +1,5 @@
 import React from "react";
-import {withStyles} from "@material-ui/core/styles";
+import { withStyles } from "@material-ui/core/styles";
 import Select from 'react-select';
 import Checkbox from "@material-ui/core/Checkbox";
 import Table from "@material-ui/core/Table";
@@ -15,8 +15,8 @@ import Typography from '@material-ui/core/Typography';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import FormHelperText from "@material-ui/core/FormHelperText";
-import {InputField} from '@dhis2/d2-ui-core';
-import {inject, observer} from "mobx-react";
+import { InputField } from '@dhis2/d2-ui-core';
+import { inject, observer } from "mobx-react";
 import Button from '@material-ui/core/Button';
 import DialogTitle from "@material-ui/core/DialogTitle";
 import List from "@material-ui/core/List";
@@ -24,11 +24,10 @@ import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
 import Dialog from "@material-ui/core/Dialog";
 import FormControlLabel from '@material-ui/core/FormControlLabel';
-import {Clear, Done} from "@material-ui/icons";
+import { Clear, Done } from "@material-ui/icons";
 import Grid from "@material-ui/core/Grid";
-import {GreenCheckbox} from "../common";
+import { GreenCheckbox } from "../common";
 import customStyles from "../customStyles";
-import Progress from "../progress";
 
 
 const styles = theme => ({
@@ -49,7 +48,7 @@ class Step4 extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -60,15 +59,15 @@ class Step4 extends React.Component {
     }
 
     render() {
-        const {classes} = this.props;
-        const {program} = this.integrationStore;
+        const { classes } = this.props;
+        const { program } = this.integrationStore;
         return <div>
-            {program.fetchingEntities === 1 && program.isTracker ? <LinearProgress/> : ''}
+            {program.fetchingEntities === 1 && program.isTracker ? <LinearProgress /> : ''}
             {program.programStages.map(n => {
                 return (
                     <ExpansionPanel key={n.id} expanded={this.integrationStore.expanded === n.id}
-                                    onChange={this.integrationStore.handlePanelChange(n.id)}>
-                        <ExpansionPanelSummary expandIcon={<ExpandMoreIcon/>}>
+                        onChange={this.integrationStore.handlePanelChange(n.id)}>
+                        <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
                             <Typography>{n.displayName}</Typography>
                         </ExpansionPanelSummary>
                         <ExpansionPanelDetails className={classes.block}>
@@ -92,7 +91,7 @@ class Step4 extends React.Component {
                                     />
                                 </Grid>
                             </Grid>
-                            <br/>
+                            <br />
                             <Grid spacing={8} container>
                                 <Grid item xs={4}>
                                     <span>Select event date column for stage</span>
@@ -166,12 +165,12 @@ class Step4 extends React.Component {
                             <Table className={classes.table}>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell style={{width:30}}>Compulsory</TableCell>
+                                        <TableCell style={{ width: 30 }}>Compulsory</TableCell>
                                         <TableCell>Data Element Name</TableCell>
                                         <TableCell>Data Element Mapping</TableCell>
-                                        <TableCell style={{width:30}}>Uniquely Identifies Event</TableCell>
-                                        <TableCell style={{width:30}}>Options Mapping</TableCell>
-                                        <TableCell style={{width:30}}>Mapping Status</TableCell>
+                                        <TableCell style={{ width: 30 }}>Uniquely Identifies Event</TableCell>
+                                        <TableCell style={{ width: 30 }}>Options Mapping</TableCell>
+                                        <TableCell style={{ width: 30 }}>Mapping Status</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -182,7 +181,7 @@ class Step4 extends React.Component {
                                                 <Button onClick={s.handleClickOpen}>Map Options</Button>
 
                                                 <Dialog onClose={s.handleClose} open={s.open}
-                                                        aria-labelledby="simple-dialog-title">
+                                                    aria-labelledby="simple-dialog-title">
                                                     <DialogTitle id="simple-dialog-title">Mapping
                                                         options</DialogTitle>
                                                     <div>
@@ -224,7 +223,7 @@ class Step4 extends React.Component {
                                                                         <AddIcon/>
                                                                     </Avatar>
                                                                 </ListItemAvatar>*/}
-                                                                <ListItemText primary="Close"/>
+                                                                <ListItemText primary="Close" />
                                                             </ListItem>
                                                         </List>
                                                     </div>
@@ -234,7 +233,7 @@ class Step4 extends React.Component {
                                         return (
                                             <TableRow key={s.dataElement.id} hover>
                                                 <TableCell>
-                                                    <Checkbox disabled checked={s['compulsory']}/>
+                                                    <Checkbox disabled checked={s['compulsory']} />
                                                 </TableCell>
                                                 <TableCell>
                                                     {s.dataElement.displayName}
@@ -252,14 +251,14 @@ class Step4 extends React.Component {
                                                 </TableCell>
                                                 <TableCell>
                                                     <GreenCheckbox checked={s.dataElement.identifiesEvent}
-                                                              onChange={n.makeElementAsIdentifier(s, program)}/>
+                                                        onChange={n.makeElementAsIdentifier(s, program)} />
                                                 </TableCell>
 
                                                 <TableCell>
                                                     {de}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {!!s.column ? <Done/> : <Clear/>}
+                                                    {!!s.column ? <Done /> : <Clear />}
                                                 </TableCell>
                                             </TableRow>
                                         );

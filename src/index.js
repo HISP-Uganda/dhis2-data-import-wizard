@@ -3,13 +3,14 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
-
-import {init} from 'd2';
+import IntegrationStore from './stores/IntegrationStore'
+import { init } from 'd2';
+import { Provider } from "mobx-react";
 
 const config = {};
 if (process.env.NODE_ENV === 'development') {
     config.baseUrl = `http://localhost:8080/api`;
-    config.headers = {Authorization: 'Basic YWRtaW46ZGlzdHJpY3Q='}; // admin
+    config.headers = { Authorization: 'Basic YWRtaW46ZGlzdHJpY3Q=' }; // admin
 } else {
     let baseUrl = '';
     let urlArray = window.location.pathname.split('/');
@@ -25,7 +26,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 init(config).then(d2 => {
     window.d2 = d2;
-    ReactDOM.render(<App d2={d2}/>, document.getElementById('root'));
+    ReactDOM.render(<Provider IntegrationStore={IntegrationStore}><App d2={d2} /></Provider>, document.getElementById('root'));
     serviceWorker.unregister();
 }).catch(e => console.error);
 
