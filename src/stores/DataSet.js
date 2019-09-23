@@ -1,26 +1,27 @@
-import {action, computed, observable} from "mobx";
+import { action, computed, observable } from "mobx";
 import _ from 'lodash';
 import XLSX from "xlsx";
 import {
     encodeData,
     enumerateDates,
-    nest,
-    processDataSet
+    nest
 } from "../utils/utils";
 
 import {
     callAxios,
     postAxios
 } from '../utils/data-utils'
-import {processMergedCells} from './converters'
-import {generate} from 'shortid';
-import {NotificationManager} from "react-notifications";
+import { processMergedCells } from '../utils/excel-utils'
+import { generate } from 'shortid';
+import { NotificationManager } from "react-notifications";
 import Param from "./Param";
-import {Store as GroupStore} from '@dhis2/d2-ui-core';
+import { Store as GroupStore } from '@dhis2/d2-ui-core';
 import OrganisationUnit from "./OrganisationUnit";
 import moment from "moment";
 
 import DataSetWorker from "workerize-loader?inline!./Workers"; // eslint-disable-line import/no-webpack-loader-syntax
+
+const instance = new DataSetWorker();
 
 
 class DataSet {
@@ -134,6 +135,7 @@ class DataSet {
     @observable scheduleServerUrl = 'http://localhost:3001';
     @observable useProxy = false;
     @observable proxy = '';
+    @observable processed;
 
     @action setDialogOpen = val => this.dialogOpen = val;
     @action setProxy = val => this.proxy = val;
@@ -215,7 +217,6 @@ class DataSet {
                 return new OrganisationUnit('', ou, '');
             }).filter(ou => ou.name !== '');
             this.convertAndMakeDefault(units, this.organisationUnits);
-            this.convertAndMakeDefault(units, this.organisationUnits);
         } else if (!_.isEmpty(this.rowData) && _.isArray(this.rowData) && this.orgUnitColumn) {
             let units = this.rowData.map(d => {
                 return new OrganisationUnit('', d[this.orgUnitColumn.value], '');
@@ -243,7 +244,7 @@ class DataSet {
 
     @action filterChange = val => this.filterText = val;
 
-    @action  setSelectedIndicators = val => this.selectedIndicators = val;
+    @action setSelectedIndicators = val => this.selectedIndicators = val;
     @action handelURLChange = value => {
         this.url = value;
         if (this.url !== '') {
@@ -305,7 +306,7 @@ class DataSet {
                     }
                 }
                 if (foundOU) {
-                    org.setMapping({label: foundOU.name, value: foundOU.id});
+                    org.setMapping({ label: foundOU.name, value: foundOU.id });
                 }
                 return org
 
@@ -321,6 +322,7 @@ class DataSet {
     @action setSourceOrganisationUnit = val => this.sourceOrganisationUnits = val;
     @action setStartPeriod = val => this.startPeriod = val;
     @action setEndPeriod = val => this.endPeriod = val;
+    @action setProcessed = val => this.processed = val;
 
 
     @action handleStartPeriodChange = event => {
@@ -377,7 +379,9 @@ class DataSet {
         }
     };
 
-    @action pullIndicatorData = async () => {
+    pullIndicatorData = async () => {
+        const dataSet = JSON.parse(JSON.stringify(this.canBeSaved));
+
         const p1 = new Param();
         const p2 = new Param();
         const p3 = new Param();
@@ -397,7 +401,9 @@ class DataSet {
             this.replaceParamByValue(p1, 'dx:');
             this.replaceParam(p3);
 
-            await this.pullData();
+            const data = await this.pullData();
+            const processed = await instance.processDataSetData(data, dataSet);
+            this.setProcessed(processed);
         }
     };
 
@@ -483,7 +489,7 @@ class DataSet {
                     }
                 }
                 if (foundOU) {
-                    org.setMapping({label: foundOU.name, value: foundOU.id});
+                    org.setMapping({ label: foundOU.name, value: foundOU.id });
                 }
                 return org;
             });
@@ -534,7 +540,7 @@ class DataSet {
 
             if (levelResponse) {
                 const levels = levelResponse.organisationUnitLevels.map(l => {
-                    return {label: l.name, value: l.level}
+                    return { label: l.name, value: l.level }
                 });
 
                 this.setLevels(levels);
@@ -542,7 +548,7 @@ class DataSet {
 
             if (data) {
                 const dataSets = data.dataSets.map(d => {
-                    return {label: d.name, value: d.id};
+                    return { label: d.name, value: d.id };
                 });
                 this.setDhis2DataSets(dataSets);
             }
@@ -627,7 +633,7 @@ class DataSet {
 
                 if (levelResponse) {
                     const levels = levelResponse.organisationUnitLevels.map(l => {
-                        return {label: l.name, value: l.level}
+                        return { label: l.name, value: l.level }
                     });
 
                     this.setLevels(levels);
@@ -761,10 +767,10 @@ class DataSet {
         if (urlBase) {
             this.openDialog();
             await this.loadLevelsAndDataSets();
-            this.setDataElementColumn({label: 'dataElement', value: 'dataElement'});
-            this.setCategoryOptionComboColumn({label: 'categoryOptionCombo', value: 'categoryOptionCombo'});
-            this.setPeriodColumn({label: 'period', value: 'period'});
-            this.setDataValueColumn({label: 'value', value: 'value'});
+            this.setDataElementColumn({ label: 'dataElement', value: 'dataElement' });
+            this.setCategoryOptionComboColumn({ label: 'categoryOptionCombo', value: 'categoryOptionCombo' });
+            this.setPeriodColumn({ label: 'period', value: 'period' });
+            this.setDataValueColumn({ label: 'value', value: 'value' });
 
             const p1 = new Param();
             p1.setParam('dataElementIdScheme');
@@ -792,8 +798,8 @@ class DataSet {
             this.replaceParam(p4);
             this.replaceParam(p5);
 
-            this.setOrgUnitStrategy({label: 'name', value: 'name'});
-            this.setOrgUnitColumn({label: 'orgUnit', value: 'orgUnit'});
+            this.setOrgUnitStrategy({ label: 'name', value: 'name' });
+            this.setOrgUnitColumn({ label: 'orgUnit', value: 'orgUnit' });
 
             this.closeDialog();
 
@@ -813,17 +819,15 @@ class DataSet {
             const f = accepted[0];
             this.setFileName(f.name);
 
-            let instance = new DataSetWorker();
             const workbook = await instance.expensive(accepted);
             this.setWorkbook(workbook);
 
             const sheets = this.workbook.SheetNames.map(s => {
-                return {label: s, value: s}
+                return { label: s, value: s }
             });
 
             if (sheets.length > 0) {
                 this.setSelectedSheet(sheets[0]);
-                this.setWorkSheet(this.workbook.Sheets[this.selectedSheet.value]);
             }
             this.setSheets(sheets);
             this.setTemplate(1);
@@ -889,7 +893,7 @@ class DataSet {
 
                                 if (found) {
                                     const cocs = found.dataElement.categoryCombo.categoryOptionCombos.map(coc => {
-                                        return {label: coc.name, value: coc.name}
+                                        return { label: coc.name, value: coc.name }
                                     });
                                     search.setUniqueCategoryOptionCombos(cocs);
                                 } else {
@@ -983,59 +987,48 @@ class DataSet {
         }
     };
 
-    @action
     pullData = async () => {
-        this.setPulledData(null);
         let param = '';
-
         if (this.params.length > 0) {
             param = encodeData(this.params);
         }
         if (this.url !== '') {
-            try {
-                let response;
-                let url = this.url;
-                this.setPulling(true);
+            let response;
+            let url = this.url;
+            if (this.templateType.value === '4') {
+                url = this.getDHIS2Url() + '/dataValueSets.json';
+            } else if (this.templateType.value === '5') {
+                url = this.getDHIS2Url() + '/analytics.json';
+            }
 
+            url = param !== '' ? url + '?' + param : url;
+
+            if (this.useProxy) {
+                response = await postAxios(this.proxy, {
+                    username: this.username,
+                    password: this.password,
+                    url
+                });
+            } else {
+                response = await callAxios(url, {}, this.username, this.password);
+            }
+
+
+            if (response) {
                 if (this.templateType.value === '4') {
-                    url = this.getDHIS2Url() + '/dataValueSets.json';
+                    return response.dataValues;
                 } else if (this.templateType.value === '5') {
-                    url = this.getDHIS2Url() + '/analytics.json';
-                }
-
-                url = param !== '' ? url + '?' + param : url;
-
-                if (this.useProxy) {
-                    response = await postAxios(this.proxy, {
-                        username: this.username,
-                        password: this.password,
-                        url
+                    const headers = response.headers.map(h => h['name']);
+                    return response.rows.map(r => {
+                        return Object.assign.apply({}, headers.map((v, i) => ({
+                            [v]: r[i]
+                        })));
+                    }).map(v => {
+                        return { ...v, value: Math.round(v.value) }
                     });
                 } else {
-                    response = await callAxios(url, {}, this.username, this.password);
+                    return response
                 }
-
-
-                if (response) {
-                    if (this.templateType.value === '4') {
-                        this.setPulledData(response.dataValues);
-                    } else if (this.templateType.value === '5') {
-                        const headers = response.headers.map(h => h['name']);
-                        const found = response.rows.map(r => {
-                            return Object.assign.apply({}, headers.map((v, i) => ({
-                                [v]: r[i]
-                            })));
-                        }).map(v => {
-                            return {...v, value: Math.round(v.value)}
-                        });
-                        this.setPulledData(found);
-                    } else {
-                        this.setPulledData(response);
-                    }
-                }
-            } catch (e) {
-                this.setPulling(false);
-                NotificationManager.error(`Could not pull data ${e.message}`, 'Error', 5000);
             }
         }
     };
@@ -1055,14 +1048,14 @@ class DataSet {
 
     @action completeDataSets = () => {
         const api = this.d2.Api.getApi();
-        return api.post('completeDataSetRegistrations', {completeDataSetRegistrations: this.whatToComplete}, {});
+        return api.post('completeDataSetRegistrations', { completeDataSetRegistrations: this.whatToComplete }, {});
     };
 
     @action create1 = () => {
         try {
             if (this.processed.dataValues && this.processed.dataValues.length > 0) {
                 this.setMessage(`Inserting ${this.processed.dataValues.length} of ${this.processed.dataValues.length}`);
-                return this.insertDataValues({dataValues: this.processed.dataValues});
+                return this.insertDataValues({ dataValues: this.processed.dataValues });
             }
         } catch (e) {
             this.setResponses(e);
@@ -1074,9 +1067,11 @@ class DataSet {
     @action create = async () => {
         this.setDisplayProgress(true);
         this.openDialog();
+        const dataSet = JSON.parse(JSON.stringify(this.canBeSaved));
         try {
             if (this.templateType && this.templateType.value === '4') {
                 if (this.dhis2DataSet) {
+                    this.setMessage('Fetching organisations');
                     const orgUnits = await this.pullOrganisationUnits();
                     const param = new Param();
                     param.setParam('orgUnit');
@@ -1089,50 +1084,74 @@ class DataSet {
                                 this.setMessage(`Processing for period ${p}`);
                                 pp.setValue(p);
                                 this.replaceParam(pp);
-                                const all = orgUnits.map(ou => {
-                                    // this.setMessage(`Processing for period ${p} for ${ou.name}`);
+                                for (const ou of orgUnits) {
+                                    this.setMessage(`Fetching data for ${ou.name} for period ${p}`);
                                     param.setValue(ou.id);
                                     this.replaceParam(param);
-                                    return this.pullData().then(data => {
-                                        return this.create1();
-                                    });
-                                });
-                                const results = await Promise.all(all);
-                                this.setMessage(`Finished processing for period ${p}`);
-                                const filtered = results.filter(r => {
-                                    return r
-                                });
-                                this.setMessage(`Completing data set`);
-                                await this.completeDataSets();
-                                this.setMessage(`Finished completing data set`);
-                                this.destroy();
-                                this.setResponses(filtered);
+                                    const data = await this.pullData();
+                                    try {
+                                        const processed = await instance.processDataSetData(data, dataSet);
+                                        this.setProcessed(processed);
+                                        this.setMessage(`Inserting processed data for ${ou.name}`);
+                                        const total = processed.dataValues.length;
+                                        let initial = 0;
+                                        if (processed.dataValues && processed.dataValues.length > 0) {
+                                            const chunked = _.chunk(processed.dataValues, 5000);
+                                            for (const c of chunked) {
+                                                const current = c.length + initial
+                                                this.setMessage(`Inserting ${current} of ${total} for ${ou.name}`);
+                                                const results = await this.insertDataValues({ dataValues: c });
+                                                this.setResponses(results);
+                                                initial = current
+                                            }
+                                            this.setMessage(`Finished inserting processed data`);
+                                            this.setMessage(`Completing data set`);
+                                            await this.completeDataSets();
+                                            this.setMessage(`Finished completing data set`);
+                                            this.destroy();
+                                        }
+
+                                    } catch (e) {
+                                        console.log(e);
+                                    }
+                                }
                             }
 
                         } else {
                             NotificationManager.warning('Either period type not supported or start and end date not provided', 'Warning');
                         }
                     } else {
-                        const all = orgUnits.map(ou => {
-                            // this.setMessage(`Processing data for ${ou.name}`);
+                        for (const ou of orgUnits) {
+                            this.setMessage(`Fetching data for ${ou.name}`);
                             param.setValue(ou.id);
                             this.replaceParam(param);
-                            return this.pullData().then(data => {
-                                return this.create1();
-                            });
-                        });
+                            const data = await this.pullData();
+                            try {
+                                const processed = await instance.processDataSetData(data, dataSet);
+                                this.setProcessed(processed);
+                                this.setMessage(`Inserting processed data for ${ou.name}`);
+                                const total = processed.dataValues.length;
+                                let initial = 0;
+                                if (processed.dataValues && processed.dataValues.length > 0) {
+                                    const chunked = _.chunk(processed.dataValues, 5000);
+                                    for (const c of chunked) {
+                                        const current = c.length + initial
+                                        this.setMessage(`Inserting ${current} of ${total} for ${ou.name}`);
+                                        const results = await this.insertDataValues({ dataValues: c });
+                                        this.setResponses(results);
+                                        initial = current
+                                    }
+                                    this.setMessage(`Finished inserting processed data`);
+                                    this.setMessage(`Completing data set`);
+                                    await this.completeDataSets();
+                                    this.setMessage(`Finished completing data set`);
+                                    this.destroy();
+                                }
 
-                        this.setMessage(`Inserting processed data`);
-                        const results = await Promise.all(all);
-                        this.setMessage(`Finished inserting processed data`);
-                        const filtered = results.filter(r => {
-                            return r
-                        });
-                        this.setMessage(`Completing data set`);
-                        await this.completeDataSets();
-                        this.setMessage(`Finished completing data set`);
-                        this.destroy();
-                        this.setResponses(filtered);
+                            } catch (e) {
+                                console.log(e);
+                            }
+                        }
                     }
                 }
             } else if (this.templateType && this.templateType.value === '5' && this.multiplePeriods) {
@@ -1145,28 +1164,50 @@ class DataSet {
                         pp.setValue(`pe:${p}`);
                         this.replaceParamByValue(pp, 'pe:');
                         this.setMessage(`Pulling from analytics for period ${p}`);
-                        await this.pullData();
+                        await this.pullIndicatorData();
                         this.setMessage(`Finished pulling from analytics for period ${p}`);
-                        this.setMessage(`Inserting processed data`);
-                        const results = await this.create1();
-                        this.setMessage(`Finished inserting processed data`);
-                        this.setMessage(`Completing data set`);
-                        await this.completeDataSets();
-                        this.setMessage(`Finished completing data set`);
-                        this.destroy();
-                        this.setResponses(results);
+
+                        if (this.processed.dataValues && this.processed.dataValues.length > 0) {
+                            const total = this.processed.dataValues.length;
+                            let initial = 0;
+                            const chunked = _.chunk(this.processed.dataValues, 5000);
+                            for (const c of chunked) {
+                                const current = c.length + initial
+                                this.setMessage(`Inserting ${current} of ${total}`);
+                                const results = await this.insertDataValues({ dataValues: c });
+                                this.setResponses(results);
+                                initial = current
+                            }
+
+                            this.setMessage(`Finished inserting processed data`);
+                            this.setMessage(`Completing data set`);
+                            await this.completeDataSets();
+                            this.setMessage(`Finished completing data set`);
+                            this.destroy();
+                        }
                     }
                 }
             } else {
                 this.setMessage(`Inserting processed data`);
-                // await this.pullData();
-                const results = await this.create1();
-                this.setMessage(`Finished inserting processed data`);
-                this.setMessage(`Completing data set`);
-                await this.completeDataSets();
-                this.setMessage(`Finished completing data set`);
-                this.destroy();
-                this.setResponses(results);
+
+                if (this.processed.dataValues && this.processed.dataValues.length > 0) {
+                    const total = this.processed.dataValues.length;
+                    let initial = 0;
+                    const chunked = _.chunk(this.processed.dataValues, 5000);
+                    for (const c of chunked) {
+                        const current = c.length + initial
+                        this.setMessage(`Inserting ${current} of ${total}`);
+                        const results = await this.insertDataValues({ dataValues: c });
+                        this.setResponses(results);
+                        initial = current
+                    }
+
+                    this.setMessage(`Finished inserting processed data`);
+                    this.setMessage(`Completing data set`);
+                    await this.completeDataSets();
+                    this.setMessage(`Finished completing data set`);
+                    this.destroy();
+                }
             }
         } catch (e) {
             this.setResponses(e);
@@ -1174,7 +1215,7 @@ class DataSet {
         this.setDisplayProgress(false);
         this.closeDialog();
 
-        const {importCount, conflicts} = this.processedResponses;
+        const { importCount, conflicts } = this.processedResponses;
         NotificationManager.success(`${importCount.imported}`, 'Imported');
         NotificationManager.success(`${importCount.deleted}`, 'Deleted');
         NotificationManager.success(`${importCount.updated}`, 'Updated');
@@ -1209,7 +1250,7 @@ class DataSet {
     };
 
     @action deleteAggregate = async aggregates => {
-        const mapping = _.findIndex(aggregates, {aggregateId: this.aggregateId});
+        const mapping = _.findIndex(aggregates, { aggregateId: this.aggregateId });
         aggregates.splice(mapping, 1);
 
         aggregates = aggregates.map(p => {
@@ -1227,13 +1268,13 @@ class DataSet {
     @action setMappingAll2 = de => val => {
         if (val && val.value) {
             let value = val.value;
-            value = {...value, column: de.column};
+            value = { ...value, column: de.column };
             val = {
                 ...val,
                 value
             };
             const obj = _.fromPairs([[de.name, val]]);
-            const c = {...this.cell2, ...obj};
+            const c = { ...this.cell2, ...obj };
             this.setCell2(c);
         } else {
             const final = _.omit(this.cell2, [de.name]);
@@ -1251,16 +1292,16 @@ class DataSet {
 
             if (match) {
                 let value = coc.value;
-                value = {...value, column: match.column};
+                value = { ...value, column: match.column };
                 coc = {
                     ...coc,
                     value
                 };
                 const obj = _.fromPairs([[coc.label, coc]]);
-                maps = {...maps, ...obj};
+                maps = { ...maps, ...obj };
             }
         });
-        maps = {...maps, ...this.cell2};
+        maps = { ...maps, ...this.cell2 };
         this.setCell2(maps);
     };
 
@@ -1310,17 +1351,25 @@ class DataSet {
                     }
                 }
                 if (foundOU) {
-                    org.setMapping({label: foundOU.name, value: foundOU.id});
+                    org.setMapping({ label: foundOU.name, value: foundOU.id });
                 }
                 return org
             });
-
         this.setSourceOrganisationUnits(units)
     };
 
     @action handleUseProxyChange = event => {
         this.setUseProxy(event.target.checked);
     };
+
+    @action process = async () => {
+        this.openDialog()
+        const dataSet = JSON.parse(JSON.stringify(this.canBeSaved));
+        const data = JSON.parse(JSON.stringify(this.data))
+        const dataResponse = await instance.processDataSetData(data, dataSet);
+        this.setProcessed(dataResponse);
+        this.closeDialog()
+    }
 
 
     @computed get showDetails() {
@@ -1345,7 +1394,7 @@ class DataSet {
 
         this.responses.forEach(response => {
             if (response && (response['status'] === 'SUCCESS' || response['status'] === 'WARNING')) {
-                const {imported, deleted, updated, ignored} = response['importCount'];
+                const { imported, deleted, updated, ignored } = response['importCount'];
                 if (imported) {
                     importedTotal = importedTotal + imported
                 }
@@ -1364,12 +1413,12 @@ class DataSet {
 
                 if (response['conflicts']) {
                     const processedConflicts = response['conflicts'].map(c => {
-                        return {...c, id: generate()}
+                        return { ...c, id: generate() }
                     });
                     conflicts = [...conflicts, ...processedConflicts]
                 }
             } else if (response && response['httpStatusCode'] === 500) {
-                errors = [...errors, {...response['error']}];
+                errors = [...errors, { ...response['error'] }];
             }
         });
         const importCount = {
@@ -1378,7 +1427,7 @@ class DataSet {
             updated: updatedTotal,
             ignored: ignoredTotal
         };
-        return {errors, importCount, conflicts}
+        return { errors, importCount, conflicts }
     }
 
 
@@ -1386,19 +1435,19 @@ class DataSet {
         if (this.workSheet) {
             const range = XLSX.utils.decode_range(this.workSheet['!ref']);
             return _.range(0, range.e.c + 1).map(v => {
-                const cell = XLSX.utils.encode_cell({r: this.headerRow - 1, c: v});
+                const cell = XLSX.utils.encode_cell({ r: this.headerRow - 1, c: v });
                 const cellValue = this.workSheet[cell];
                 if (cellValue) {
-                    return {label: cellValue.v.toString(), value: cellValue.v.toString()};
+                    return { label: cellValue.v.toString(), value: cellValue.v.toString() };
                 } else {
-                    return {label: '', value: ''};
+                    return { label: '', value: '' };
                 }
             }).filter(c => {
                 return c.label !== '';
             });
         } else if (this.pulledData) {
             return _.keys(this.pulledData[0]).map(e => {
-                return {label: e, value: e}
+                return { label: e, value: e }
             });
         }
 
@@ -1414,7 +1463,7 @@ class DataSet {
         this.mergedCells.filter(e => {
             return e.s.r === this.headerRow - 1
         }).sort().forEach(val => {
-            const cell_address = {c: val.s.c, r: val.s.r};
+            const cell_address = { c: val.s.c, r: val.s.r };
             const cell_ref = XLSX.utils.encode_cell(cell_address);
 
             const dataElement = this.data[cell_ref]['v'];
@@ -1425,12 +1474,14 @@ class DataSet {
         const others = this.cellColumns.map(col => {
             const cell = col.value + this.headerRow;
             const name = this.data[cell];
-            return {name: name ? name['v'] : null, column: col.value};
+            return { name: name ? name['v'] : null, column: col.value };
         }).filter(d => {
             const match = processed.find(p => {
                 return p.column === d.column;
             });
-            return d.name !== null && d.column > this.dataStartColumn.value && !match;
+            const col1 = XLSX.utils.decode_col(d.column);
+            const col2 = XLSX.utils.decode_col(this.dataStartColumn.value);
+            return d.name !== null && col1 >= col2 && !match;
         });
 
         processed = [...processed, ...others];
@@ -1441,24 +1492,18 @@ class DataSet {
 
     @computed get processedDhis2DataSets() {
         return this.dhis2DataSets.map(ds => {
-            return {label: ds.name, value: ds}
+            return { label: ds.name, value: ds }
         });
     }
 
     @computed get cells() {
-        let foundCells = [];
         if (this.workSheet) {
-            const range = XLSX.utils.decode_range(this.workSheet['!ref']);
-            for (let R = range.s.r; R <= range.e.r; ++R) {
-                for (let C = range.s.c; C <= range.e.c; ++C) {
-                    const cell_address = {c: C, r: R};
-                    const cell_ref = XLSX.utils.encode_cell(cell_address);
-
-                    foundCells = [...foundCells, {label: cell_ref, value: cell_ref}];
-                }
-            }
+            const keys = _.keys(this.workSheet);
+            return keys.map(v => {
+                return { label: v, value: v }
+            }).filter(v => ['!margins', '!merges', '!ref'].indexOf(v.label) === -1);
         }
-        return foundCells;
+        return [];
     }
 
 
@@ -1475,13 +1520,12 @@ class DataSet {
             const range = XLSX.utils.decode_range(this.workSheet['!ref']);
             return _.range(0, range.e.c + 1).map(v => {
                 const cell_ref = XLSX.utils.encode_col(v);
-                return {label: cell_ref, value: cell_ref}
+                return { label: cell_ref, value: cell_ref }
             });
         }
 
         return [];
     }
-
 
     @computed get data() {
         if (this.workSheet) {
@@ -1492,9 +1536,8 @@ class DataSet {
                 });
                 return nest(data, [this.dataElementColumn.value]);
             } else if (this.cells.length > 0) {
-                return _.fromPairs(this.cells.map(c => {
-                    return [c.value, this.workSheet[c.value]]
-                }));
+                const d = _.omit(this.workSheet, ['!margins', '!merges', '!ref']);
+                return d;
             }
         } else if (this.pulledData) {
             if ((this.templateType.value === '4' || this.templateType.value === '6') && this.dataElementColumn) {
@@ -1524,8 +1567,8 @@ class DataSet {
             f.dataElements.forEach(de => {
                 f.categoryOptionCombos.forEach(coc => {
                     cocs = [...cocs, {
-                        label: de.name + ': ' + coc.name,
-                        value: {dataElement: de.id, categoryOptionCombo: coc.id}
+                        label: de.name + ' ' + coc.name,
+                        value: { dataElement: de.id, categoryOptionCombo: coc.id }
                     }]
                 });
             });
@@ -1548,17 +1591,12 @@ class DataSet {
         }))
     }
 
-    @computed get processed() {
-        return processDataSet(this.data, this)
-
-    }
-
     @computed get indicatorOptions() {
         if (this.selectedIndicators.length > 0) {
             return this.indicators.filter(i => {
                 return this.selectedIndicators.indexOf(i.value) !== -1;
             }).map(i => {
-                return {...i, label: i.text};
+                return { ...i, label: i.text };
             })
         }
 
@@ -1571,7 +1609,7 @@ class DataSet {
         });
 
         return _.uniqWith(p, _.isEqual).map(p => {
-            return {dataSet: this.id, organisationUnit: p.orgUnit, period: p.period}
+            return { dataSet: this.id, organisationUnit: p.orgUnit, period: p.period }
         });
     }
 
@@ -1585,17 +1623,17 @@ class DataSet {
 
         for (const f of this.forms) {
             for (const e of f.dataElements) {
-                dataElements = {...dataElements, [e.id]: e.name}
+                dataElements = { ...dataElements, [e.id]: e.name }
             }
             for (const c of f.categoryOptionCombos) {
-                categoryOptionCombos = {...categoryOptionCombos, [c.id]: c.name}
+                categoryOptionCombos = { ...categoryOptionCombos, [c.id]: c.name }
             }
         }
-        return {dataElements, categoryOptionCombos};
+        return { dataElements, categoryOptionCombos };
     }
 
     @computed get finalData() {
-        const {dataElements, categoryOptionCombos} = this.allDataElements;
+        const { dataElements, categoryOptionCombos } = this.allDataElements;
         return this.processed.dataValues.map((v, k) => {
             return {
                 ...v,
@@ -1628,7 +1666,7 @@ class DataSet {
     @computed get organisations() {
         if (this.organisationUnits) {
             return this.organisationUnits.map(o => {
-                return {label: o.name, value: o.id};
+                return { label: o.name, value: o.id };
             });
         }
 
@@ -1638,7 +1676,7 @@ class DataSet {
     @computed get organisationColumns() {
         if (this.organisationUnits) {
             return this.organisationUnits.map(o => {
-                return {label: o.name, value: o.id};
+                return { label: o.name, value: o.id };
             });
         }
         return [];
@@ -1648,13 +1686,13 @@ class DataSet {
         if (this.isDhis2) {
             if (this.dhis2DataSet) {
                 return this.dhis2DataSet.dataSetElements.map(dse => {
-                    return {label: dse.dataElement.name, value: dse.dataElement.name}
+                    return { label: dse.dataElement.name, value: dse.dataElement.name }
                 })
             }
             return [];
         } else {
             return _.keys(this.data).map(d => {
-                return {label: d, value: d}
+                return { label: d, value: d }
             });
         }
     }
@@ -1731,13 +1769,14 @@ class DataSet {
                 'indicators',
                 'selectedIndicators',
                 'proxy',
-                'useProxy'
+                'useProxy',
+                'rows'
             ])
     }
 
     @computed get categories() {
         return this.categoryCombo.categories.map(category => {
-            return {label: category.name, value: category.id}
+            return { label: category.name, value: category.id }
         })
     }
 

@@ -1,7 +1,7 @@
-import {action, computed, observable} from "mobx";
+import { action, computed, observable } from "mobx";
 import _ from "lodash";
 import moment from "moment";
-import {searchOrgUnit} from "../utils/utils";
+import { searchOrgUnit } from "../utils/utils";
 
 class ProgramStage {
     @observable id;
@@ -58,9 +58,7 @@ class ProgramStage {
 
     @action makeEventDateAsIdentifier = program => async event => {
         this.setEventDateAsIdentifier(event.target.checked);
-        if (this.eventDateIdentifiesEvent) {
-            await this.findEventsByDates(program);
-        } else {
+        if (!this.eventDateIdentifiesEvent) {
             this.setEventsByDate({});
         }
     };
@@ -101,9 +99,8 @@ class ProgramStage {
         }
     };
 
-    @action
     findEventsByDates = async (program) => {
-        const {d2, orgUnitColumn, id, organisationUnits, orgUnitStrategy} = program;
+        const { d2, orgUnitColumn, id, organisationUnits, orgUnitStrategy } = program;
         const uploadedData = program.data;
         if (d2 && orgUnitColumn && uploadedData && id && this.eventDateColumn && this.eventDateIdentifiesEvent) {
             const api = d2.Api.getApi();
@@ -129,20 +126,18 @@ class ProgramStage {
                 });
             });
             const data = await Promise.all(all);
-            console.log(data);
             const processed = data.filter(response => {
                 return response.events.length > 0;
             }).map(response => {
                 const event = response.events[0];
                 return [moment(event.eventDate).format('YYYY-MM-DD'), event]
             });
-            this.setEventsByDate(_.fromPairs(processed));
+            return _.fromPairs(processed);
         }
     };
 
-    @action
     findEventsByElements = async (program) => {
-        const {d2, id, orgUnitColumn, organisationUnits, orgUnitStrategy} = program;
+        const { d2, id, orgUnitColumn, organisationUnits, orgUnitStrategy } = program;
         const uploadedData = program.data;
         if (d2 && uploadedData && id && this.elementsWhichAreIdentifies.length > 0) {
             const elements = this.elementsWhichAreIdentifies.map(e => {
@@ -154,7 +149,7 @@ class ProgramStage {
             let values = uploadedData.map(d => {
                 return this.elementsWhichAreIdentifies.map(e => {
                     const ou = searchOrgUnit(d[orgUnitColumn.value], orgUnitStrategy, organisationUnits);
-                    return {value: d[e.column.value], de: e.dataElement.id, orgUnit: ou ? ou.id : null};
+                    return { value: d[e.column.value], de: e.dataElement.id, orgUnit: ou ? ou.id : null };
                 });
             }).filter(f => _.every(f, v => {
                 return v.value !== null && v.value !== undefined && v.value !== '' && v.orgUnit
@@ -181,7 +176,7 @@ class ProgramStage {
                 return [es, event]
             });
 
-            this.setEventsByDataElement(_.fromPairs(processed));
+            return _.fromPairs(processed);
         }
     };
 

@@ -1,7 +1,7 @@
-import {inject, observer} from 'mobx-react';
+import { inject, observer } from 'mobx-react';
 import React from 'react';
-import {withStyles} from '@material-ui/core/styles';
-import {InputField, PeriodPicker} from "@dhis2/d2-ui-core";
+import { withStyles } from '@material-ui/core/styles';
+import { InputField, PeriodPicker } from "@dhis2/d2-ui-core";
 import Select from 'react-select';
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import Checkbox from "@material-ui/core/Checkbox";
@@ -9,7 +9,7 @@ import FormGroup from '@material-ui/core/FormGroup';
 import TextField from '@material-ui/core/TextField';
 import Progress from "../progress";
 
-import {createParam} from '../../stores/converters'
+import { createParam } from '../../stores/converters'
 import Grid from "@material-ui/core/Grid";
 import GroupEditor from "../GroupEditor";
 import Table from "@material-ui/core/Table";
@@ -20,6 +20,8 @@ import TableHead from "@material-ui/core/TableHead";
 import TablePagination from "@material-ui/core/TablePagination";
 import * as PropTypes from "prop-types";
 import customStyles from "../customStyles";
+import { changeStyle } from "../../utils/data-utils";
+
 
 const styles = theme => ({
     block: {
@@ -54,7 +56,7 @@ class D2 extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
 
     }
@@ -89,8 +91,8 @@ class D2 extends React.Component {
             return <Grid container spacing={8}>
                 {this.integrationStore.dataSet.categoryCombo.categories.map(category => {
                     return <Grid key={category.id} item
-                                 xs={12 / this.integrationStore.dataSet.categoryCombo.categories.length}>
-                        <span style={{fontWeight: 'bold'}}>{category.name + ' column'}</span>
+                        xs={12 / this.integrationStore.dataSet.categoryCombo.categories.length}>
+                        <span style={{ fontWeight: 'bold' }}>{category.name + ' column'}</span>
                         <Select
                             placeholder={category.name + ' column'}
                             value={category.mapping}
@@ -110,7 +112,7 @@ class D2 extends React.Component {
     mapping = () => {
         return <Grid spacing={8} container>
             <Grid xs={3} item>
-                <span style={{fontWeight: 'bold'}}>Data element column</span>
+                <span style={{ fontWeight: 'bold' }}>Data element column</span>
                 <Select
                     placeholder="Data element column"
                     value={this.integrationStore.dataSet.dataElementColumn}
@@ -121,7 +123,7 @@ class D2 extends React.Component {
                 />
             </Grid>
             <Grid xs={3} item>
-                <span style={{fontWeight: 'bold'}}>Category option combination column</span>
+                <span style={{ fontWeight: 'bold' }}>Category option combination column</span>
                 <Select
                     placeholder="Category option combination column"
                     value={this.integrationStore.dataSet.categoryOptionComboColumn}
@@ -132,7 +134,7 @@ class D2 extends React.Component {
                 />
             </Grid>
             <Grid xs={3} item>
-                <span style={{fontWeight: 'bold'}}>Period column</span>
+                <span style={{ fontWeight: 'bold' }}>Period column</span>
                 <Select
                     placeholder="Period column"
                     value={this.integrationStore.dataSet.periodColumn}
@@ -143,7 +145,7 @@ class D2 extends React.Component {
                 />
             </Grid>
             <Grid xs={3} item>
-                <span style={{fontWeight: 'bold'}}>Data value column</span>
+                <span style={{ fontWeight: 'bold' }}>Data value column</span>
                 <Select
                     placeholder="Data value column"
                     value={this.integrationStore.dataSet.dataValueColumn}
@@ -190,7 +192,7 @@ class D2 extends React.Component {
 
         return <Grid container spacing={8}>
             <Grid item xs={12}>
-                <span style={{fontWeight: 'bold'}}>{label}</span>
+                <span style={{ fontWeight: 'bold' }}>{label}</span>
                 <Select
                     placeholder={label}
                     value={value}
@@ -234,7 +236,7 @@ class D2 extends React.Component {
         return <div>
             {showPeriod ? this.integrationStore.dataSet.periodInExcel || this.integrationStore.dataSet.templateType.value === '2' ?
                 <div>
-                    <span style={{fontWeight: 'bold'}}>{label}</span>
+                    <span style={{ fontWeight: 'bold' }}>{label}</span>
                     <Select
                         placeholder={label}
                         value={value}
@@ -286,7 +288,7 @@ class D2 extends React.Component {
         }
 
         return <div>
-            <span style={{fontWeight: 'bold'}}>{label}</span>
+            <span style={{ fontWeight: 'bold' }}>{label}</span>
             <Select
                 placeholder={label}
                 value={value}
@@ -309,7 +311,7 @@ class D2 extends React.Component {
         let label = 'Header Row';
         let showHeader = true;
         let showDataStartColumn = false;
-        const {displayFull} = this.props;
+        const { displayFull } = this.props;
         switch (this.integrationStore.dataSet.templateType.value) {
             case '2':
 
@@ -329,7 +331,7 @@ class D2 extends React.Component {
         }
 
         return <div>
-            <span style={{fontWeight: 'bold'}}>Excel sheet</span>
+            <span style={{ fontWeight: 'bold' }}>Excel sheet</span>
             <Select
                 placeholder="Select sheet"
                 value={this.integrationStore.dataSet.selectedSheet}
@@ -359,7 +361,7 @@ class D2 extends React.Component {
 
             {showDataStartColumn && displayFull ?
                 <div>
-                    <span style={{fontWeight: 'bold'}}>Data start column</span>
+                    <span style={{ fontWeight: 'bold' }}>Data start column</span>
                     <Select
                         placeholder="Data start column"
                         value={this.integrationStore.dataSet.dataStartColumn}
@@ -397,12 +399,12 @@ class D2 extends React.Component {
                                 placeholder="Select destination unit"
                                 value={u.mapping}
                                 options={this.integrationStore.dataSet.organisationUnits.map(ui => {
-                                    return {label: ui.name, value: ui.id}
+                                    return { label: ui.name, value: ui.id }
                                 })}
                                 onChange={u.setMapping}
                                 isClearable
                                 isSearchable
-                                styles={customStyles}
+                                styles={changeStyle(u.mapping)}
                             />
                         </TableCell>
                     </TableRow>)}
@@ -471,9 +473,9 @@ class D2 extends React.Component {
     api = () => {
         return <div>
             {this.organisationColumn()}
-            <br/>
+            <br />
             {this.organisationUnitMapping()}
-            <br/>
+            <br />
             {this.mapping()}
         </div>
     };
@@ -482,8 +484,8 @@ class D2 extends React.Component {
         return <Grid container spacing={8}>
             <Grid item xs={12}>
                 <Checkbox checked={this.integrationStore.dataSet.multiplePeriods}
-                          onChange={this.integrationStore.dataSet.onCheckMultiplePeriods}
-                          value="checked"/> Multiple Periods
+                    onChange={this.integrationStore.dataSet.onCheckMultiplePeriods}
+                    value="checked" /> Multiple Periods
 
                 {this.integrationStore.dataSet.multiplePeriods ? <div>
                     <Grid container spacing={8}>
@@ -573,8 +575,8 @@ class D2 extends React.Component {
                     />
                 </Grid>
             </Grid>
-            <br/>
-            <br/>
+            <br />
+            <br />
         </div>
     };
 
@@ -617,7 +619,7 @@ class D2 extends React.Component {
     form1 = () => {
         const showFixedOptions = this.integrationStore.dataSet.templateType.value === '3';
         const showMapping = this.integrationStore.dataSet.templateType.value === '1';
-        const {displayFull} = this.props;
+        const { displayFull } = this.props;
         return <div>
             {showFixedOptions && displayFull ? <Grid container spacing={8}>
                 <Grid item xs={12}>
@@ -627,10 +629,10 @@ class D2 extends React.Component {
             <Grid container spacing={8}>
                 <Grid item xs={12}>
                     {this.fileOption()}
-                    <br/>
+                    <br />
                     {displayFull ? this.organisationColumn() : null}
                     {showFixedOptions ? null : this.organisationUnitMapping()}
-                    <br/>
+                    <br />
                     {displayFull ? this.periodColumn() : null}
                 </Grid>
             </Grid>
@@ -659,7 +661,7 @@ class D2 extends React.Component {
             <div>
                 {this.step2Form()}
                 <Progress open={this.integrationStore.dataSet.dialogOpen}
-                          onClose={this.integrationStore.dataSet.closeDialog}/>
+                    onClose={this.integrationStore.dataSet.closeDialog} />
             </div>
         );
     }

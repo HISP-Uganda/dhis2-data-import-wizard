@@ -1,4 +1,3 @@
-import XLSX from "xlsx";
 import _ from "lodash";
 import DataSet from "./DataSet";
 import CategoryCombo from "./CategoryCombo";
@@ -19,64 +18,6 @@ import ProgramTrackedEntityAttribute from "./ProgramTrackedEntityAttribute";
 import Program from "./Program";
 import TrackedEntityType from "./TrackedEntityType";
 import Schedule from "./Schedule";
-
-export const processMergedCells = (mergedCells, data, mergedCell, processed, dataElement) => {
-    const merged = mergedCells.filter(e => {
-        return e.s.r === mergedCell.s.r + 1 && e.s.c >= mergedCell.s.c && e.e.c <= mergedCell.e.c;
-    });
-
-    if (merged.length > 0) {
-        merged.forEach(val => {
-            const cell_address = {
-                c: val.s.c,
-                r: val.s.r
-            };
-            const cell_ref = XLSX.utils.encode_cell(cell_address);
-
-            if (mergedCell.previous) {
-                val.previous = mergedCell.previous + ', ' + data[cell_ref]['v'];
-            } else {
-                val.previous = data[cell_ref]['v'];
-            }
-            processed = processMergedCells(mergedCells, data, val, processed, dataElement);
-        });
-    } else {
-
-        if (mergedCell.s.c === mergedCell.e.c) {
-            let column = {
-                column: XLSX.utils.encode_col(mergedCell.s.c),
-                name: dataElement
-            };
-            processed = [...processed, column];
-
-        } else {
-            for (let i = mergedCell.s.c; i <= mergedCell.e.c; i++) {
-                const cell_address = {
-                    c: i,
-                    r: mergedCell.s.r + 1
-                };
-                const cell_ref = XLSX.utils.encode_cell(cell_address);
-
-                if (data[cell_ref]) {
-                    let column = {
-                        column: XLSX.utils.encode_col(i),
-                        name: dataElement + ": " + data[cell_ref]['v']
-                    };
-                    if (mergedCell.previous) {
-                        column = {
-                            ...column,
-                            name: dataElement + ": " + mergedCell.previous + ', ' + data[cell_ref]['v']
-                        }
-                    }
-
-                    processed = [...processed, column];
-                }
-            }
-        }
-    }
-    return processed;
-};
-
 
 export const convertAggregate = (ds, d2) => {
 
@@ -376,7 +317,7 @@ export const convert = (program, d2) => {
     p.setLongitudeColumn(program.longitudeColumn);
     p.setDateEndFilter(program.dateEndFilter || '');
     p.setScheduleTime(program.scheduleTime || 0);
-    p.setSelectedSheet(program.selectedSheet);
+    // p.setSelectedSheet(program.selectedSheet);
     p.setErrors([]);
     p.setConflicts([]);
     p.setMappingName(program.mappingName || '');

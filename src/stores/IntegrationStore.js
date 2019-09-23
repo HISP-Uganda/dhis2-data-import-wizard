@@ -1,12 +1,11 @@
-import {action, computed, configure, observable} from 'mobx';
+import { action, computed, configure, observable } from 'mobx';
 import _ from "lodash";
 import saveAs from 'file-saver';
-import {callAxios2, postAxios} from '../utils/data-utils'
-import {convert, convertAggregate, convertSchedules} from './converters'
-import {NotificationManager} from "react-notifications";
+import { callAxios2, postAxios } from '../utils/data-utils'
+import { convert, convertAggregate, convertSchedules } from './converters'
+import { NotificationManager } from "react-notifications";
 import Schedule from "./Schedule";
-import {convertDataToURL, encodeData} from "../utils/utils";
-
+import { convertDataToURL } from "../utils/utils";
 
 configure({
     enforceActions: "observed"
@@ -192,7 +191,7 @@ class IntegrationStore {
     };
 
     @action stopSchedule = async args => {
-        await postAxios(args.url + '/stop', {name: args.name});
+        await postAxios(args.url + '/stop', { name: args.name });
         await this.saveSchedule()
     };
 
@@ -230,7 +229,7 @@ class IntegrationStore {
     };
 
     downloadData = args => {
-        const blob = new Blob([JSON.stringify(args.canBeSaved, null, 2)], {type: 'application/json'});
+        const blob = new Blob([JSON.stringify(args.canBeSaved, null, 2)], { type: 'application/json' });
         saveAs(blob, "data.json");
     };
 
@@ -261,27 +260,27 @@ class IntegrationStore {
 
 
         if (newTrackedEntityInstances.length > 0) {
-            const blob = new Blob([JSON.stringify({trackedEntityInstances: newTrackedEntityInstances}, null, 2)], {type: 'application/json'});
+            const blob = new Blob([JSON.stringify({ trackedEntityInstances: newTrackedEntityInstances }, null, 2)], { type: 'application/json' });
             saveAs(blob, "NewTrackedEntityInstances.json");
         }
 
         if (trackedEntityInstancesUpdate.length > 0) {
-            const blob = new Blob([JSON.stringify({trackedEntityInstances: trackedEntityInstancesUpdate}, null, 2)], {type: 'application/json'});
+            const blob = new Blob([JSON.stringify({ trackedEntityInstances: trackedEntityInstancesUpdate }, null, 2)], { type: 'application/json' });
             saveAs(blob, "TrackedEntityInstancesUpdate.json");
         }
 
         if (newEnrollments.length > 0) {
-            const blob = new Blob([JSON.stringify({enrollments: newEnrollments}, null, 2)], {type: 'application/json'});
+            const blob = new Blob([JSON.stringify({ enrollments: newEnrollments }, null, 2)], { type: 'application/json' });
             saveAs(blob, "NewEnrollments.json");
         }
 
         if (newEvents.length > 0) {
-            const blob = new Blob([JSON.stringify({events: newEvents}, null, 2)], {type: 'application/json'});
+            const blob = new Blob([JSON.stringify({ events: newEvents }, null, 2)], { type: 'application/json' });
             saveAs(blob, "NewEvents.json");
         }
 
         if (newEvents.length > 0) {
-            const blob = new Blob([JSON.stringify({events: eventsUpdate}, null, 2)], {type: 'application/json'});
+            const blob = new Blob([JSON.stringify({ events: eventsUpdate }, null, 2)], { type: 'application/json' });
             saveAs(blob, "EventsUpdate.json");
         }
 
@@ -290,7 +289,7 @@ class IntegrationStore {
     @action downloadAggregateData = () => {
         const dataValues = this.dataSet.processed;
 
-        const blob = new Blob([JSON.stringify({dataValues}, null, 2)], {type: 'application/json'});
+        const blob = new Blob([JSON.stringify({ dataValues }, null, 2)], { type: 'application/json' });
         saveAs(blob, "DataValues.json");
     };
 
@@ -303,26 +302,38 @@ class IntegrationStore {
         // if (this.activeStep === 3 && (!this.program.isTracker || (!this.program.createEntities && !this.program.updateEntities))) {
         if (this.activeStep === 3 && !this.program.isTracker) {
             this.changeSet(this.activeStep + 2);
+        } else if (this.activeStep === 5) {
+            await this.program.process();
+            this.changeSet(this.activeStep + 1);
         } else if (this.activeStep === 6 && this.program.totalImports === 0) {
+            await this.saveMapping();
             this.handleReset()
         } else if (this.activeStep === 7) {
+            await this.saveMapping();
             this.handleReset()
         } else {
             this.changeSet(this.activeStep + 1);
         }
-
         // if (this.activeStep === 8) {
-        //     await this.saveMapping();
+
         //     this.changeSet(0)
         // }
     };
 
     @action
-    handleNextAggregate = () => {
+    handleNextAggregate = async () => {
         if (this.dataSet.templateType && (this.dataSet.templateType.value === '4' || (this.dataSet.templateType.value === '5' && this.dataSet.multiplePeriods)) && this.activeAggregateStep === 4) {
+            this.changeAggregateSet(this.activeAggregateStep + 2);
+        } else if (this.activeAggregateStep === 4 && this.dataSet.isExcel) {
+            await this.dataSet.process();
             this.changeAggregateSet(this.activeAggregateStep + 1);
-            this.handleNextAggregate();
+        } else if (this.dataSet.templateType && this.activeAggregateStep === 4 && this.dataSet.templateType.value === '5' && !this.dataSet.multiplePeriods) {
+            this.dataSet.openDialog()
+            await this.dataSet.pullIndicatorData();
+            this.dataSet.closeDialog();
+            this.changeAggregateSet(this.activeAggregateStep + 1);
         } else if (this.activeAggregateStep === 6) {
+            await this.saveAggregate();
             this.handleResetAggregate()
         } else {
             this.changeAggregateSet(this.activeAggregateStep + 1);
@@ -360,7 +371,7 @@ class IntegrationStore {
     };
 
     @action
-    saveMapping = () => {
+    saveMapping = async () => {
         this.program.saveMapping(this.mappings);
     };
 
@@ -485,7 +496,7 @@ class IntegrationStore {
         this.openDialog();
         try {
             const api = this.d2.Api.getApi();
-            const {dataValues} = await api.get('dataSets/' + model.id + '/dataValueSet', {});
+            const { dataValues } = await api.get('dataSets/' + model.id + '/dataValueSet', {});
             model.forms.forEach(f => {
                 const des = f.dataElements.map(de => de.id);
                 f.categoryOptionCombos.forEach(coc => {
@@ -560,7 +571,7 @@ class IntegrationStore {
             const val = data[s.name];
 
             if (val) {
-                s = {...s, val};
+                s = { ...s, val };
             }
             return s;
         });
@@ -569,7 +580,7 @@ class IntegrationStore {
     };
 
     @action deleteSchedule = async (schedule) => {
-        const mapping = _.findIndex(this.schedules, {name: schedule.name});
+        const mapping = _.findIndex(this.schedules, { name: schedule.name });
         this.schedules.splice(mapping, 1);
 
         try {
@@ -616,7 +627,7 @@ class IntegrationStore {
         const stringParams = convertDataToURL(params);
 
         try {
-            const {programs, pager: {total}} = await api.get(`programs?${stringParams}`);
+            const { programs, pager: { total } } = await api.get(`programs?${stringParams}`);
             this.setPrograms(programs);
             this.setTotalPrograms(total);
             this.toggleLoading(false);
@@ -665,7 +676,7 @@ class IntegrationStore {
 
 
         try {
-            let {dataSets, pager: {total}} = await api.get(`dataSets?${stringParams}`);
+            let { dataSets, pager: { total } } = await api.get(`dataSets?${stringParams}`);
             dataSets = dataSets.map(dataSet => {
                 const groupedDataElements = _.groupBy(dataSet['dataSetElements'], 'dataElement.categoryCombo.id');
 
@@ -781,14 +792,14 @@ class IntegrationStore {
             let obj = {};
 
             data.forEach(d => {
-                obj = {...obj, ...d}
+                obj = { ...obj, ...d }
             });
 
             const processed = foundSchedules.map(s => {
                 const cs = obj[s.name];
 
                 if (cs !== null && cs !== undefined) {
-                    s = {...s, ...cs}
+                    s = { ...s, ...cs }
                 }
 
                 return s;
@@ -1064,9 +1075,10 @@ class IntegrationStore {
                     || (this.dataSet.multiplePeriods && (!this.dataSet.startPeriod || !this.dataSet.endPeriod))
                     || (!this.dataSet.multiplePeriods && !this.dataSet.periodExists)
             } else if (this.dataSet.templateType.value === '5') {
+                console.log((!this.dataSet.periodExists2 || !(this.dataSet.multiplePeriods && this.dataSet.startPeriod && this.dataSet.endPeriod)));
                 return !this.dataSet
                     || !this.dataSet.currentLevel
-                    || !this.dataSet.periodExists2
+                    || !(this.dataSet.periodExists2 || (this.dataSet.multiplePeriods && this.dataSet.startPeriod && this.dataSet.endPeriod))
                     || this.dataSet.selectedIndicators.length === 0
             }
         } else if (this.activeAggregateStep === 4) {
@@ -1181,13 +1193,13 @@ class IntegrationStore {
             return this.aggregates.filter(v => {
                 return v.url && v.url !== '';
             }).map(m => {
-                return {label: m.mappingName, value: m.canBeSaved}
+                return { label: m.mappingName, value: m.canBeSaved }
             })
         } else if (this.currentSchedule.type === 'tracker') {
             return this.mappings.filter(v => {
                 return v.url && v.url !== '';
             }).map(m => {
-                return {label: m.mappingName, value: m.canBeSaved}
+                return { label: m.mappingName, value: m.canBeSaved }
             })
         }
         return [];

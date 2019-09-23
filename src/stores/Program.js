@@ -21,7 +21,7 @@ import OrganisationUnit from "./OrganisationUnit";
 
 import ProgramWorker from 'workerize-loader?inline!./Workers'; // eslint-disable-line import/no-webpack-loader-syntax
 
-
+let instance = new ProgramWorker();
 class Program {
     @observable lastUpdated;
     @observable name;
@@ -149,7 +149,8 @@ class Program {
     @observable sourceOrganisationUnits = [];
     @observable message = '';
     @observable incidentDateProvided = false;
-    @observable worker;
+    @observable processed;
+    @observable data;
 
 
     constructor(lastUpdated, name, id, programType, displayName, programStages, programTrackedEntityAttributes) {
@@ -325,8 +326,6 @@ class Program {
             this.uploadMessage = '';
             const f = accepted[0];
             this.setFileName(f.name);
-
-            let instance = new ProgramWorker();
             const workbook = await instance.expensive(accepted);
             this.setWorkbook(workbook);
             const sheets = this.workbook.SheetNames.map(s => {
@@ -337,19 +336,8 @@ class Program {
             });
 
             this.setSheets(sheets);
-
             if (sheets.length > 0) {
                 await this.setSelectedSheet(sheets[0]);
-            }
-
-            if (this.uniqueIds) {
-                await this.searchTrackedEntities();
-            }
-
-            if (!this.isTracker) {
-                const programStage = this.programStages[0];
-                await programStage.findEventsByDates(this);
-                await programStage.findEventsByElements(this);
             }
 
             this.closeDialog();
@@ -360,8 +348,7 @@ class Program {
     };
 
 
-    @action
-    pullData = async () => {
+    @action pullData = async () => {
         let param = '';
 
         if (this.params.length > 0) {
@@ -383,7 +370,6 @@ class Program {
                         }
                     });
                 } else {
-                    this.setPulling(true);
                     response = await axios.get(this.url + '?' + param);
                 }
 
@@ -391,31 +377,17 @@ class Program {
                     let {
                         data
                     } = response;
-                    this.setPulling(false);
-                    this.setDataSource(3);
-
                     if (this.responseKey && this.responseKey !== '') {
-                        this.setPulledData(data[this.responseKey]);
+                        this.setData(data[this.responseKey]);
                     } else {
-                        this.setPulledData(data);
+                        this.setData(data);
                     }
-
-                    await this.searchTrackedEntities();
-
-                    if (!this.isTracker) {
-                        const programStage = this.programStages[0];
-                        await programStage.findEventsByDates(this);
-                        await programStage.findEventsByElements(this);
-                    }
-                    this.setLastRun(moment(new Date()).format('YYYY-MM-DD HH:mm:ss'));
-
-                    this.closeDialog();
                 }
             } catch (e) {
                 NotificationManager.error(e.message, 'Error', 5000);
-                this.setPulling(false);
                 this.closeDialog();
             }
+            this.closeDialog();
         }
     };
 
@@ -482,16 +454,11 @@ class Program {
     @action setSelectedSheet = async val => {
         this.selectedSheet = val;
         if (val) {
-            if (this.uniqueIds) {
-                await this.searchTrackedEntities();
-            }
-
-            if (!this.isTracker) {
-                const programStage = this.programStages[0];
-                await programStage.findEventsByDates(this);
-                await programStage.findEventsByElements(this);
-            }
-
+            const data = XLSX.utils.sheet_to_json(this.workbook.Sheets[val.value], {
+                range: this.headerRow - 1,
+                dateNF: 'YYYY-MM-DD'
+            });
+            this.setData(data);
             this.computeUnits();
         }
     };
@@ -519,6 +486,8 @@ class Program {
     @action setTemplateType = val => this.templateType = val;
     @action setSourceOrganisationUnit = val => this.sourceOrganisationUnits = val;
     @action setIncidentDateProvided = val => this.incidentDateProvided = val;
+    @action setProcessed = val => this.processed = val;
+    @action setData = val => this.data = val;
 
     @action
     filterAttributes = attributesFilter => {
@@ -526,13 +495,10 @@ class Program {
         this.attributesFilter = attributesFilter;
     };
 
-    @action
     searchTrackedEntities = async () => {
-        this.openDialog();
         const api = this.d2.Api.getApi();
         try {
             if (this.uniqueIds.length > 0) {
-                this.setFetchingEntities(1);
                 const all = this.uniqueIds.map(uniqueId => {
                     return api.get('trackedEntityInstances', {
                         ouMode: 'ALL',
@@ -545,7 +511,7 @@ class Program {
                 const results = await Promise.all(all);
 
                 const ids = results.map(r => {
-                    const {trackedEntityInstances} = r;
+                    const { trackedEntityInstances } = r;
                     return trackedEntityInstances.map(t => {
                         return t.trackedEntityInstance;
                     })
@@ -570,16 +536,14 @@ class Program {
                 let foundEntities = [];
 
                 for (let instance of results1) {
-                    const {trackedEntityInstances} = instance;
+                    const { trackedEntityInstances } = instance;
                     foundEntities = [...foundEntities, ...trackedEntityInstances];
                 }
-                this.setTrackedEntityInstances(foundEntities);
-                this.setFetchingEntities(2);
+                return foundEntities;
             }
         } catch (e) {
             NotificationManager.error(e.message, 'Error', 5000);
         }
-        this.closeDialog();
     };
 
     @action
@@ -613,8 +577,8 @@ class Program {
         const api = this.d2.Api.getApi();
         const events = eventsUpdate.map(event => {
             return event.dataValues.map(dataValue => {
-                const {eventDate, ...others} = event;
-                return {event: {...others, dataValues: [dataValue]}, dataElement: dataValue.dataElement};
+                const { eventDate, ...others } = event;
+                return { event: { ...others, dataValues: [dataValue] }, dataElement: dataValue.dataElement };
             });
         });
 
@@ -674,7 +638,7 @@ class Program {
                 for (const tei of chunkedTEI) {
                     current = current + tei.length;
                     this.setMessage(`Updating tracked entities ${current}/${total}`);
-                    const instancesResults = await this.insertTrackedEntityInstance({trackedEntityInstances: tei});
+                    const instancesResults = await this.insertTrackedEntityInstance({ trackedEntityInstances: tei });
                     instancesResults.type = 'trackedEntityInstance';
                     this.setResponses(instancesResults);
 
@@ -726,7 +690,7 @@ class Program {
                     this.setResponses(eventsResults);
 
                 }
-                this.setMessage('Finished creating tracked entities');
+                this.setMessage('Finished creating events');
             }
         } catch (e) {
             this.setResponses(e);
@@ -864,7 +828,7 @@ class Program {
     @action
     searchedEvents = async () => {
 
-        const {possibleEvents} = this.processed;
+        const { possibleEvents } = this.processed;
         let newEvents = [];
         let eventsUpdate = [];
 
@@ -881,7 +845,7 @@ class Program {
         }
     };
 
-    @action  computeUnits = () => {
+    @action computeUnits = () => {
         if (this.orgUnitColumn && this.data.length > 0 && _.keys(this.data[0]).indexOf(this.orgUnitColumn.value) !== -1) {
             let units = this.data.map(d => {
                 return new OrganisationUnit('', d[this.orgUnitColumn.value], '');
@@ -904,7 +868,6 @@ class Program {
                     if (foundOUByCode) {
                         foundOU = foundOUByCode;
                     } else {
-
                         const foundOUByName = _.find(this.organisationUnits, o => {
                             return org.name === o.name;
                         });
@@ -915,7 +878,7 @@ class Program {
                     }
                 }
                 if (foundOU) {
-                    org.setMapping({label: foundOU.name, value: foundOU.id});
+                    org.setMapping({ label: foundOU.name, value: foundOU.id });
                 }
                 return org
             });
@@ -923,23 +886,33 @@ class Program {
         }
     };
 
-    @computed
-    get disableCreate() {
-        return this.totalImports === 0
+    @action process = async () => {
+        this.openDialog()
+        const program = JSON.parse(JSON.stringify(this.canBeSaved));
+        const data = JSON.parse(JSON.stringify(this.data));
+        const uniqueColumn = JSON.parse(JSON.stringify(this.uniqueColumn));
+        let dataResponse;
+        if (this.isTracker) {
+            this.setMessage("Fetching previous tracked entity instances");
+            const searchedInstances = await this.searchTrackedEntities();
+            this.setMessage("Processing selected tracker program...")
+            dataResponse = await instance.processTrackerProgramData(data, program, uniqueColumn, searchedInstances);
+        } else {
+            const programStage = this.programStages[0];
+            this.setMessage("Fetching previous events by date");
+            const eventsByDateData = await programStage.findEventsByDates(this);
+            this.setMessage("Fetching previous events by data elements marked as unique");
+            const eventsByDataElement = await programStage.findEventsByElements(this);
+            this.setMessage("Processing selected event program...")
+            dataResponse = await instance.processEventProgramData(program, data, eventsByDateData, eventsByDataElement);
+        }
+        this.setProcessed(dataResponse);
+        this.closeDialog()
     }
 
     @computed
-    get data() {
-        if (this.workbook && this.selectedSheet) {
-            return XLSX.utils.sheet_to_json(this.workbook.Sheets[this.selectedSheet.value], {
-                range: this.headerRow - 1,
-                dateNF: 'YYYY-MM-DD'
-            });
-        } else if (this.pulledData) {
-            return this.pulledData
-        }
-
-        return [];
+    get disableCreate() {
+        return this.totalImports === 0
     }
 
     @computed
@@ -951,33 +924,8 @@ class Program {
 
     @computed
     get columns() {
-        if (this.workbook && this.selectedSheet) {
-            const workSheet = this.workbook.Sheets[this.selectedSheet.value];
-            if (workSheet) {
-                const range = XLSX.utils.decode_range(workSheet['!ref']);
-                return _.range(0, range.e.c + 1).map(v => {
-                    const cell = XLSX.utils.encode_cell({
-                        r: this.headerRow - 1,
-                        c: v
-                    });
-                    const cellValue = workSheet[cell];
-                    if (cellValue) {
-                        return {
-                            label: cellValue.v.toString(),
-                            value: cellValue.v.toString()
-                        };
-                    } else {
-                        return {
-                            label: '',
-                            value: ''
-                        };
-                    }
-                }).filter(c => {
-                    return c.label !== '';
-                });
-            }
-        } else if (this.pulledData) {
-            return _.keys(this.pulledData[0]).map(e => {
+        if (this.data) {
+            return _.keys(this.data[0]).map(e => {
                 return {
                     label: e,
                     value: e
@@ -1106,7 +1054,7 @@ class Program {
                 result.imported = result.imported + value.imported;
                 result.deleted = result.deleted + value.deleted;
                 return result
-            }, {updated: 0, imported: 0, deleted: 0});
+            }, { updated: 0, imported: 0, deleted: 0 });
 
             reduced.type = d[0]['type'];
             reduced.reference = k;
@@ -1222,17 +1170,6 @@ class Program {
     }
 
 
-    @computed
-    get processed() {
-        if (this.isTracker) {
-            return processProgramData(this.data, this, this.uniqueColumn, this.searchedInstances);
-        } else {
-            const programStage = this.programStages[0];
-            return processEvents(this, this.data, programStage.eventsByDate, programStage.eventsByDataElement);
-        }
-    }
-
-
     @computed get processedAttributes() {
         const data = this.programTrackedEntityAttributes.map(item => {
             return [item.trackedEntityAttribute.id, item.trackedEntityAttribute.displayName];
@@ -1258,10 +1195,10 @@ class Program {
 
         return newTrackedEntityInstances.map(tei => {
             const attributes = tei.attributes.map(a => {
-                return {...a, name: this.processedAttributes[a.attribute]};
+                return { ...a, name: this.processedAttributes[a.attribute] };
             });
 
-            return {...tei, attributes, orgUnit: this.allOrganisationUnits[tei.orgUnit]}
+            return { ...tei, attributes, orgUnit: this.allOrganisationUnits[tei.orgUnit] }
         })
     }
 
@@ -1275,7 +1212,7 @@ class Program {
         } = this.processed;
 
         return newEnrollments.map(e => {
-            return {...e, orgUnit: this.allOrganisationUnits[e.orgUnit]}
+            return { ...e, orgUnit: this.allOrganisationUnits[e.orgUnit] }
         })
     }
 
@@ -1286,7 +1223,7 @@ class Program {
 
         return newEvents.map(event => {
             const dataValues = event.dataValues.map(e => {
-                return {...e, name: this.processedDataElements[e.dataElement]};
+                return { ...e, name: this.processedDataElements[e.dataElement] };
             });
 
             return {
@@ -1305,10 +1242,10 @@ class Program {
 
         return trackedEntityInstancesUpdate.map(tei => {
             const attributes = tei.attributes.map(a => {
-                return {...a, name: this.processedAttributes[a.attribute]};
+                return { ...a, name: this.processedAttributes[a.attribute] };
             });
 
-            return {...tei, attributes, orgUnit: this.allOrganisationUnits[tei.orgUnit]}
+            return { ...tei, attributes, orgUnit: this.allOrganisationUnits[tei.orgUnit] }
         });
     }
 
@@ -1319,7 +1256,7 @@ class Program {
 
         return eventsUpdate.map(event => {
             const dataValues = event.dataValues.map(e => {
-                return {...e, name: this.processedDataElements[e.dataElement]};
+                return { ...e, name: this.processedDataElements[e.dataElement] };
             });
 
             return {
@@ -1391,7 +1328,7 @@ class Program {
         const stage = this.programStages[0];
 
         for (const psde of stage.programStageDataElements) {
-            data = {[psde.dataElement.id]: psde.dataElement.eventsByDataElement}
+            data = { [psde.dataElement.id]: psde.dataElement.eventsByDataElement }
         }
 
         return data

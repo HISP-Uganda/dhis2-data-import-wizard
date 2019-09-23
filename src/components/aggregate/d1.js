@@ -1,11 +1,10 @@
-import {inject, observer} from "mobx-react";
+import { inject, observer } from "mobx-react";
 import React from "react";
-import {withStyles} from "@material-ui/core/styles";
+import { withStyles } from "@material-ui/core/styles";
 import Table from "@dhis2/d2-ui-table";
 import TablePagination from "@material-ui/core/TablePagination";
-import Progress from "../progress";
-import {InputField} from "@dhis2/d2-ui-core";
-
+import { InputField } from "@dhis2/d2-ui-core";
+import LinearProgress from '@material-ui/core/LinearProgress';
 
 const styles = theme => ({});
 
@@ -18,7 +17,7 @@ class D1 extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -30,12 +29,13 @@ class D1 extends React.Component {
     render() {
 
         return <div>
+            {this.integrationStore.dialogOpen ? <LinearProgress /> : null}
             <InputField
                 label="Search"
                 type="text"
                 fullWidth
                 value={this.integrationStore.search}
-                onChange={(value) => this.integrationStore.setSearch(value, 'd1')}/>
+                onChange={(value) => this.integrationStore.setSearch(value, 'd1')} />
             <Table
                 columns={['name', 'code']}
                 rows={this.integrationStore.dataSets}
@@ -56,8 +56,8 @@ class D1 extends React.Component {
                 onChangePage={this.integrationStore.handleChangeElementPage('d1')}
                 onChangeRowsPerPage={this.integrationStore.handleChangeElementRowsPerPage('d1')}
             />
-            <Progress open={this.integrationStore.dialogOpen}
-                      onClose={this.integrationStore.closeDialog}/>
+            {/* <Progress open={this.integrationStore.dialogOpen}
+                      onClose={this.integrationStore.closeDialog}/> */}
         </div>
 
     }

@@ -1,6 +1,6 @@
-import {inject, observer} from 'mobx-react';
+import { inject, observer } from 'mobx-react';
 import React from 'react';
-import {withStyles} from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/core/styles';
 import Select from 'react-select';
 
 import Table from "@material-ui/core/Table";
@@ -8,14 +8,17 @@ import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
-import {Done, Clear, DoneAll} from '@material-ui/icons'
+import { Done, Clear, DoneAll } from '@material-ui/icons'
 import ExpansionPanel from '@material-ui/core/ExpansionPanel';
 import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import Typography from "@material-ui/core/Typography";
+import Progress from '../progress';
+import '../../sticky.css';
+import { changeStyle } from "../../utils/data-utils";
 
-import '../../sticky.css'
+
 
 
 const styles = theme => ({
@@ -58,7 +61,7 @@ class D3 extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -88,9 +91,9 @@ class D3 extends React.Component {
             this.integrationStore.dataSet.setDefaults();
         } else if (this.integrationStore.dataSet.templateType.value === '5') {
             this.integrationStore.dataSet.setDefaultIndicators();
-            if (!this.integrationStore.dataSet.multiplePeriods) {
-                await this.integrationStore.dataSet.pullIndicatorData();
-            }
+            // if (!this.integrationStore.dataSet.multiplePeriods) {
+            //     await this.integrationStore.dataSet.pullIndicatorData();
+            // }
         }
     }
 
@@ -104,6 +107,7 @@ class D3 extends React.Component {
                 isSearchable
                 options={this.integrationStore.dataSet.cells}
                 onChange={coc.setCellAll(de)}
+                styles={changeStyle(coc.cell[de.id])}
             />
 
         } else if (this.integrationStore.dataSet.templateType.value === '2') {
@@ -114,6 +118,7 @@ class D3 extends React.Component {
                 value={coc.column[de.id]}
                 options={this.integrationStore.dataSet.cellColumns}
                 onChange={coc.setColumnAll(de)}
+                styles={changeStyle(coc.column[de.id])}
             />
         } else if (this.integrationStore.dataSet.templateType.value === '1' || this.integrationStore.dataSet.templateType.value === '4' || this.integrationStore.dataSet.templateType.value === '6') {
             return <Select
@@ -123,6 +128,8 @@ class D3 extends React.Component {
                 value={coc.mapping[de.id]}
                 options={de.uniqueCategoryOptionCombos}
                 onChange={coc.setMappingAll(de)}
+                styles={changeStyle(coc.mapping[de.id])}
+
             />
         } else if (this.integrationStore.dataSet.templateType.value === '5') {
             return <Select
@@ -132,6 +139,7 @@ class D3 extends React.Component {
                 value={coc.mapping[de.id]}
                 options={this.integrationStore.dataSet.indicatorOptions}
                 onChange={coc.setMappingAll(de)}
+                styles={changeStyle(coc.mapping[de.id])}
             />
         }
 
@@ -145,16 +153,17 @@ class D3 extends React.Component {
             value={this.integrationStore.dataSet.cell2[de.name]}
             options={this.integrationStore.dataSet.allCategoryOptionCombos}
             onChange={this.integrationStore.dataSet.setMappingAll2(de)}
+            styles={changeStyle(this.integrationStore.dataSet.cell2[de.name])}
         />
     };
 
     render() {
-        const {dataSet} = this.integrationStore;
-        const {classes} = this.props;
+        const { dataSet } = this.integrationStore;
+        const { classes } = this.props;
         let displayMappingHeader = null;
         let display = null;
         if (this.integrationStore.dataSet.templateType.value === '1' || this.integrationStore.dataSet.templateType.value === '6') {
-            displayMappingHeader = <TableCell style={{minWidth: 400, padding: 2}}>
+            displayMappingHeader = <TableCell style={{ minWidth: 400, padding: 2 }}>
                 Mapping
             </TableCell>;
         }
@@ -163,51 +172,51 @@ class D3 extends React.Component {
             display = dataSet.forms.map((form, k) => {
                 return (
                     <ExpansionPanel key={k} expanded={this.integrationStore.expanded === k}
-                                    onChange={this.integrationStore.handlePanelChange(k)}>
-                        <ExpansionPanelSummary expandIcon={<ExpandMoreIcon/>}>
+                        onChange={this.integrationStore.handlePanelChange(k)}>
+                        <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
                             <Typography>{form.name}</Typography>
                         </ExpansionPanelSummary>
                         <ExpansionPanelDetails>
                             <div className="scrollable">
-                                <Table style={{minWidth: '100%'}}>
+                                <Table style={{ minWidth: '100%' }}>
                                     <TableHead>
                                         <TableRow>
-                                            <TableCell style={{minWidth: 500, padding: 2}}>
+                                            <TableCell style={{ minWidth: 500, padding: 2 }}>
                                                 Data Element
                                             </TableCell>
 
                                             {displayMappingHeader}
 
                                             {form.categoryOptionCombos.map(coc => {
-                                                return <TableCell key={coc.id} style={{minWidth: 400, padding: 2}}>
+                                                return <TableCell key={coc.id} style={{ minWidth: 400, padding: 2 }}>
                                                     {coc.name}
                                                 </TableCell>
                                             })}
-                                            <TableCell style={{width: 40}}>Status</TableCell>
+                                            <TableCell style={{ width: 40 }}>Status</TableCell>
                                         </TableRow>
                                     </TableHead>
-                                    <tbody>
-                                    {form.dataElements.map(de => {
-                                        return <TableRow key={de.id} hover classes={{hover: classes.hover}}>
-                                            <TableCell component="th" scope="row" style={{padding: 2}}>
-                                                {de.name}
-                                            </TableCell>
-
-                                            {this.displayMapping(de)}
-
-                                            {form.categoryOptionCombos.map(coc => {
-                                                return <TableCell key={de.id + coc.id} style={{padding: 2}}>
-                                                    {this.displayCell(de, coc)}
+                                    <TableBody>
+                                        {form.dataElements.map(de => {
+                                            return <TableRow key={de.id} hover classes={{ hover: classes.hover }}>
+                                                <TableCell component="th" scope="row" style={{ padding: 2 }}>
+                                                    {de.name}
                                                 </TableCell>
-                                            })}
-                                            <TableCell>
-                                                {form.status[de.id].all ? <DoneAll/> : form.status[de.id].some ?
-                                                    <Done/> :
-                                                    <Clear/>}
-                                            </TableCell>
-                                        </TableRow>
-                                    })}
-                                    </tbody>
+
+                                                {this.displayMapping(de)}
+
+                                                {form.categoryOptionCombos.map(coc => {
+                                                    return <TableCell key={de.id + coc.id} style={{ padding: 2 }}>
+                                                        {this.displayCell(de, coc)}
+                                                    </TableCell>
+                                                })}
+                                                <TableCell>
+                                                    {form.status[de.id].all ? <DoneAll /> : form.status[de.id].some ?
+                                                        <Done /> :
+                                                        <Clear />}
+                                                </TableCell>
+                                            </TableRow>
+                                        })}
+                                    </TableBody>
                                 </Table>
                             </div>
                         </ExpansionPanelDetails>
@@ -219,13 +228,13 @@ class D3 extends React.Component {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell style={{width: '49%'}}>
+                            <TableCell style={{ width: '49%' }}>
                                 Source Data Element with disaggregation
                             </TableCell>
-                            <TableCell style={{width: '49%'}}>
+                            <TableCell style={{ width: '49%' }}>
                                 Destination Data Element with disaggregation
                             </TableCell>
-                            <TableCell style={{width: '2%'}}>
+                            <TableCell style={{ width: '2%' }}>
                                 Mapped?
                             </TableCell>
                         </TableRow>
@@ -241,7 +250,7 @@ class D3 extends React.Component {
                                 </TableCell>
 
                                 <TableCell>
-                                    {!!this.integrationStore.dataSet.cell2[de.name] ? <Done/> : <Clear/>}
+                                    {!!this.integrationStore.dataSet.cell2[de.name] ? <Done /> : <Clear />}
                                 </TableCell>
                             </TableRow>
                         })}
@@ -251,8 +260,11 @@ class D3 extends React.Component {
         }
 
         return (<div>
-                {display}
-            </div>
+            {display}
+            <Progress open={this.integrationStore.dataSet.dialogOpen}
+                message="Processing data..."
+                onClose={this.integrationStore.dataSet.closeDialog} />
+        </div>
         );
     }
 }
