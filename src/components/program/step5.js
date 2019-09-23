@@ -1,9 +1,9 @@
 import React from "react";
-import {withStyles} from "@material-ui/core/styles";
+import { withStyles } from "@material-ui/core/styles";
 
-import {inject, observer} from "mobx-react";
+import { inject, observer } from "mobx-react";
 import Summary from "./Summary";
-import {NotificationManager} from "react-notifications";
+import { NotificationManager } from "react-notifications";
 import Progress from "../progress";
 import EventSummary from "./EventSummary";
 
@@ -24,7 +24,7 @@ class Step5 extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -38,10 +38,8 @@ class Step5 extends React.Component {
     render() {
         return (
             <div>
-                {this.integrationStore.program.isTracker ? <Summary displayResponse={false}/> :
-                    <EventSummary displayResponse={false}/>}
-                <Progress open={this.integrationStore.program.dialogOpen}
-                          onClose={this.integrationStore.program.closeDialog} message={this.integrationStore.program.message}/>
+                {this.integrationStore.program.isTracker ? <Summary displayResponse={false} /> : <EventSummary displayResponse={false} />}
+                <Progress open={this.integrationStore.program.dialogOpen} onClose={this.integrationStore.program.closeDialog} message={this.integrationStore.program.message} />
             </div>
 
 

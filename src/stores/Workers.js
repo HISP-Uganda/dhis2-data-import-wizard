@@ -1,4 +1,5 @@
 import XLSX from 'xlsx';
+import { processDataSet, processProgramData, processEvents } from '../utils/utils'
 
 export function expensive(files) {
 
@@ -18,4 +19,21 @@ export function expensive(files) {
         cellNF: false,
         cellText: false
     });
+}
+
+export function processDataSetData(data, dataSet) {
+    try {
+        return processDataSet(data, dataSet);
+    } catch (e) {
+        console.log(e);
+        return {}
+    }
+}
+
+export function processTrackerProgramData(data, program, uniqueColumn, instances) {
+    return processProgramData(data, program, uniqueColumn, instances)
+}
+
+export function processEventProgramData(data, program, uniqueColumn, instances) {
+    return processEvents(data, program, uniqueColumn, instances)
 }

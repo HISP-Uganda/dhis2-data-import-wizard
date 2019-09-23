@@ -4,15 +4,14 @@ import XLSX from "xlsx";
 import {
     encodeData,
     enumerateDates,
-    nest,
-    processDataSet
+    nest
 } from "../utils/utils";
 
 import {
     callAxios,
     postAxios
 } from '../utils/data-utils'
-import { processMergedCells } from './converters'
+import { processMergedCells } from '../utils/excel-utils'
 import { generate } from 'shortid';
 import { NotificationManager } from "react-notifications";
 import Param from "./Param";
@@ -21,6 +20,8 @@ import OrganisationUnit from "./OrganisationUnit";
 import moment from "moment";
 
 import DataSetWorker from "workerize-loader?inline!./Workers"; // eslint-disable-line import/no-webpack-loader-syntax
+
+const instance = new DataSetWorker();
 
 
 class DataSet {
@@ -134,6 +135,7 @@ class DataSet {
     @observable scheduleServerUrl = 'http://localhost:3001';
     @observable useProxy = false;
     @observable proxy = '';
+    @observable processed;
 
     @action setDialogOpen = val => this.dialogOpen = val;
     @action setProxy = val => this.proxy = val;
@@ -214,7 +216,6 @@ class DataSet {
                 const ou = ouVal ? ouVal['v'] : '';
                 return new OrganisationUnit('', ou, '');
             }).filter(ou => ou.name !== '');
-            this.convertAndMakeDefault(units, this.organisationUnits);
             this.convertAndMakeDefault(units, this.organisationUnits);
         } else if (!_.isEmpty(this.rowData) && _.isArray(this.rowData) && this.orgUnitColumn) {
             let units = this.rowData.map(d => {
@@ -321,6 +322,7 @@ class DataSet {
     @action setSourceOrganisationUnit = val => this.sourceOrganisationUnits = val;
     @action setStartPeriod = val => this.startPeriod = val;
     @action setEndPeriod = val => this.endPeriod = val;
+    @action setProcessed = val => this.processed = val;
 
 
     @action handleStartPeriodChange = event => {
@@ -377,7 +379,9 @@ class DataSet {
         }
     };
 
-    @action pullIndicatorData = async () => {
+    pullIndicatorData = async () => {
+        const dataSet = JSON.parse(JSON.stringify(this.canBeSaved));
+
         const p1 = new Param();
         const p2 = new Param();
         const p3 = new Param();
@@ -397,7 +401,9 @@ class DataSet {
             this.replaceParamByValue(p1, 'dx:');
             this.replaceParam(p3);
 
-            await this.pullData();
+            const data = await this.pullData();
+            const processed = await instance.processDataSetData(data, dataSet);
+            this.setProcessed(processed);
         }
     };
 
@@ -813,7 +819,6 @@ class DataSet {
             const f = accepted[0];
             this.setFileName(f.name);
 
-            let instance = new DataSetWorker();
             const workbook = await instance.expensive(accepted);
             this.setWorkbook(workbook);
 
@@ -982,59 +987,48 @@ class DataSet {
         }
     };
 
-    @action
     pullData = async () => {
-        this.setPulledData(null);
         let param = '';
-
         if (this.params.length > 0) {
             param = encodeData(this.params);
         }
         if (this.url !== '') {
-            try {
-                let response;
-                let url = this.url;
-                this.setPulling(true);
+            let response;
+            let url = this.url;
+            if (this.templateType.value === '4') {
+                url = this.getDHIS2Url() + '/dataValueSets.json';
+            } else if (this.templateType.value === '5') {
+                url = this.getDHIS2Url() + '/analytics.json';
+            }
 
+            url = param !== '' ? url + '?' + param : url;
+
+            if (this.useProxy) {
+                response = await postAxios(this.proxy, {
+                    username: this.username,
+                    password: this.password,
+                    url
+                });
+            } else {
+                response = await callAxios(url, {}, this.username, this.password);
+            }
+
+
+            if (response) {
                 if (this.templateType.value === '4') {
-                    url = this.getDHIS2Url() + '/dataValueSets.json';
+                    return response.dataValues;
                 } else if (this.templateType.value === '5') {
-                    url = this.getDHIS2Url() + '/analytics.json';
-                }
-
-                url = param !== '' ? url + '?' + param : url;
-
-                if (this.useProxy) {
-                    response = await postAxios(this.proxy, {
-                        username: this.username,
-                        password: this.password,
-                        url
+                    const headers = response.headers.map(h => h['name']);
+                    return response.rows.map(r => {
+                        return Object.assign.apply({}, headers.map((v, i) => ({
+                            [v]: r[i]
+                        })));
+                    }).map(v => {
+                        return { ...v, value: Math.round(v.value) }
                     });
                 } else {
-                    response = await callAxios(url, {}, this.username, this.password);
+                    return response
                 }
-
-
-                if (response) {
-                    if (this.templateType.value === '4') {
-                        this.setPulledData(response.dataValues);
-                    } else if (this.templateType.value === '5') {
-                        const headers = response.headers.map(h => h['name']);
-                        const found = response.rows.map(r => {
-                            return Object.assign.apply({}, headers.map((v, i) => ({
-                                [v]: r[i]
-                            })));
-                        }).map(v => {
-                            return { ...v, value: Math.round(v.value) }
-                        });
-                        this.setPulledData(found);
-                    } else {
-                        this.setPulledData(response);
-                    }
-                }
-            } catch (e) {
-                this.setPulling(false);
-                NotificationManager.error(`Could not pull data ${e.message}`, 'Error', 5000);
             }
         }
     };
@@ -1073,9 +1067,11 @@ class DataSet {
     @action create = async () => {
         this.setDisplayProgress(true);
         this.openDialog();
+        const dataSet = JSON.parse(JSON.stringify(this.canBeSaved));
         try {
             if (this.templateType && this.templateType.value === '4') {
                 if (this.dhis2DataSet) {
+                    this.setMessage('Fetching organisations');
                     const orgUnits = await this.pullOrganisationUnits();
                     const param = new Param();
                     param.setParam('orgUnit');
@@ -1088,50 +1084,74 @@ class DataSet {
                                 this.setMessage(`Processing for period ${p}`);
                                 pp.setValue(p);
                                 this.replaceParam(pp);
-                                const all = orgUnits.map(ou => {
-                                    // this.setMessage(`Processing for period ${p} for ${ou.name}`);
+                                for (const ou of orgUnits) {
+                                    this.setMessage(`Fetching data for ${ou.name} for period ${p}`);
                                     param.setValue(ou.id);
                                     this.replaceParam(param);
-                                    return this.pullData().then(data => {
-                                        return this.create1();
-                                    });
-                                });
-                                const results = await Promise.all(all);
-                                this.setMessage(`Finished processing for period ${p}`);
-                                const filtered = results.filter(r => {
-                                    return r
-                                });
-                                this.setMessage(`Completing data set`);
-                                await this.completeDataSets();
-                                this.setMessage(`Finished completing data set`);
-                                this.destroy();
-                                this.setResponses(filtered);
+                                    const data = await this.pullData();
+                                    try {
+                                        const processed = await instance.processDataSetData(data, dataSet);
+                                        this.setProcessed(processed);
+                                        this.setMessage(`Inserting processed data for ${ou.name}`);
+                                        const total = processed.dataValues.length;
+                                        let initial = 0;
+                                        if (processed.dataValues && processed.dataValues.length > 0) {
+                                            const chunked = _.chunk(processed.dataValues, 5000);
+                                            for (const c of chunked) {
+                                                const current = c.length + initial
+                                                this.setMessage(`Inserting ${current} of ${total} for ${ou.name}`);
+                                                const results = await this.insertDataValues({ dataValues: c });
+                                                this.setResponses(results);
+                                                initial = current
+                                            }
+                                            this.setMessage(`Finished inserting processed data`);
+                                            this.setMessage(`Completing data set`);
+                                            await this.completeDataSets();
+                                            this.setMessage(`Finished completing data set`);
+                                            this.destroy();
+                                        }
+
+                                    } catch (e) {
+                                        console.log(e);
+                                    }
+                                }
                             }
 
                         } else {
                             NotificationManager.warning('Either period type not supported or start and end date not provided', 'Warning');
                         }
                     } else {
-                        const all = orgUnits.map(ou => {
-                            // this.setMessage(`Processing data for ${ou.name}`);
+                        for (const ou of orgUnits) {
+                            this.setMessage(`Fetching data for ${ou.name}`);
                             param.setValue(ou.id);
                             this.replaceParam(param);
-                            return this.pullData().then(data => {
-                                return this.create1();
-                            });
-                        });
+                            const data = await this.pullData();
+                            try {
+                                const processed = await instance.processDataSetData(data, dataSet);
+                                this.setProcessed(processed);
+                                this.setMessage(`Inserting processed data for ${ou.name}`);
+                                const total = processed.dataValues.length;
+                                let initial = 0;
+                                if (processed.dataValues && processed.dataValues.length > 0) {
+                                    const chunked = _.chunk(processed.dataValues, 5000);
+                                    for (const c of chunked) {
+                                        const current = c.length + initial
+                                        this.setMessage(`Inserting ${current} of ${total} for ${ou.name}`);
+                                        const results = await this.insertDataValues({ dataValues: c });
+                                        this.setResponses(results);
+                                        initial = current
+                                    }
+                                    this.setMessage(`Finished inserting processed data`);
+                                    this.setMessage(`Completing data set`);
+                                    await this.completeDataSets();
+                                    this.setMessage(`Finished completing data set`);
+                                    this.destroy();
+                                }
 
-                        this.setMessage(`Inserting processed data`);
-                        const results = await Promise.all(all);
-                        this.setMessage(`Finished inserting processed data`);
-                        const filtered = results.filter(r => {
-                            return r
-                        });
-                        this.setMessage(`Completing data set`);
-                        await this.completeDataSets();
-                        this.setMessage(`Finished completing data set`);
-                        this.destroy();
-                        this.setResponses(filtered);
+                            } catch (e) {
+                                console.log(e);
+                            }
+                        }
                     }
                 }
             } else if (this.templateType && this.templateType.value === '5' && this.multiplePeriods) {
@@ -1144,28 +1164,50 @@ class DataSet {
                         pp.setValue(`pe:${p}`);
                         this.replaceParamByValue(pp, 'pe:');
                         this.setMessage(`Pulling from analytics for period ${p}`);
-                        await this.pullData();
+                        await this.pullIndicatorData();
                         this.setMessage(`Finished pulling from analytics for period ${p}`);
-                        this.setMessage(`Inserting processed data`);
-                        const results = await this.create1();
-                        this.setMessage(`Finished inserting processed data`);
-                        this.setMessage(`Completing data set`);
-                        await this.completeDataSets();
-                        this.setMessage(`Finished completing data set`);
-                        this.destroy();
-                        this.setResponses(results);
+
+                        if (this.processed.dataValues && this.processed.dataValues.length > 0) {
+                            const total = this.processed.dataValues.length;
+                            let initial = 0;
+                            const chunked = _.chunk(this.processed.dataValues, 5000);
+                            for (const c of chunked) {
+                                const current = c.length + initial
+                                this.setMessage(`Inserting ${current} of ${total}`);
+                                const results = await this.insertDataValues({ dataValues: c });
+                                this.setResponses(results);
+                                initial = current
+                            }
+
+                            this.setMessage(`Finished inserting processed data`);
+                            this.setMessage(`Completing data set`);
+                            await this.completeDataSets();
+                            this.setMessage(`Finished completing data set`);
+                            this.destroy();
+                        }
                     }
                 }
             } else {
                 this.setMessage(`Inserting processed data`);
-                // await this.pullData();
-                const results = await this.create1();
-                this.setMessage(`Finished inserting processed data`);
-                this.setMessage(`Completing data set`);
-                await this.completeDataSets();
-                this.setMessage(`Finished completing data set`);
-                this.destroy();
-                this.setResponses(results);
+
+                if (this.processed.dataValues && this.processed.dataValues.length > 0) {
+                    const total = this.processed.dataValues.length;
+                    let initial = 0;
+                    const chunked = _.chunk(this.processed.dataValues, 5000);
+                    for (const c of chunked) {
+                        const current = c.length + initial
+                        this.setMessage(`Inserting ${current} of ${total}`);
+                        const results = await this.insertDataValues({ dataValues: c });
+                        this.setResponses(results);
+                        initial = current
+                    }
+
+                    this.setMessage(`Finished inserting processed data`);
+                    this.setMessage(`Completing data set`);
+                    await this.completeDataSets();
+                    this.setMessage(`Finished completing data set`);
+                    this.destroy();
+                }
             }
         } catch (e) {
             this.setResponses(e);
@@ -1313,13 +1355,21 @@ class DataSet {
                 }
                 return org
             });
-
         this.setSourceOrganisationUnits(units)
     };
 
     @action handleUseProxyChange = event => {
         this.setUseProxy(event.target.checked);
     };
+
+    @action process = async () => {
+        this.openDialog()
+        const dataSet = JSON.parse(JSON.stringify(this.canBeSaved));
+        const data = JSON.parse(JSON.stringify(this.data))
+        const dataResponse = await instance.processDataSetData(data, dataSet);
+        this.setProcessed(dataResponse);
+        this.closeDialog()
+    }
 
 
     @computed get showDetails() {
@@ -1431,10 +1481,8 @@ class DataSet {
             });
             const col1 = XLSX.utils.decode_col(d.column);
             const col2 = XLSX.utils.decode_col(this.dataStartColumn.value);
-            return d.name !== null && col1 > col2 && !match;
+            return d.name !== null && col1 >= col2 && !match;
         });
-
-        console.log(others);
 
         processed = [...processed, ...others];
 
@@ -1451,7 +1499,9 @@ class DataSet {
     @computed get cells() {
         if (this.workSheet) {
             const keys = _.keys(this.workSheet);
-            return keys;
+            return keys.map(v => {
+                return { label: v, value: v }
+            }).filter(v => ['!margins', '!merges', '!ref'].indexOf(v.label) === -1);
         }
         return [];
     }
@@ -1517,7 +1567,7 @@ class DataSet {
             f.dataElements.forEach(de => {
                 f.categoryOptionCombos.forEach(coc => {
                     cocs = [...cocs, {
-                        label: de.name + ': ' + coc.name,
+                        label: de.name + ' ' + coc.name,
                         value: { dataElement: de.id, categoryOptionCombo: coc.id }
                     }]
                 });
@@ -1539,11 +1589,6 @@ class DataSet {
             return [o.id, o.name];
 
         }))
-    }
-
-    @computed get processed() {
-        return processDataSet(this.data, this)
-
     }
 
     @computed get indicatorOptions() {
@@ -1724,7 +1769,8 @@ class DataSet {
                 'indicators',
                 'selectedIndicators',
                 'proxy',
-                'useProxy'
+                'useProxy',
+                'rows'
             ])
     }
 

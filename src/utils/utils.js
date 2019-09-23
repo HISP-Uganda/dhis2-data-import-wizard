@@ -1,8 +1,6 @@
 import _ from "lodash";
 import moment from "moment";
-import {generateUid} from "./uid";
-import * as alasql from 'alasql'
-
+import { generateUid } from "./uid";
 export const nest = function (seq, keys) {
     if (!keys.length)
         return seq;
@@ -101,7 +99,6 @@ export const processDataSet = (data, dataSet) => {
     let dataValues = [];
     let errors = [];
     let dataSetUnits = processOrganisationUnits(dataSet);
-
     const {
         templateType,
         forms,
@@ -117,8 +114,13 @@ export const processDataSet = (data, dataSet) => {
         attributeCombosInExcel,
         sourceOrganisationUnits,
         rows,
+        dataElementColumn,
         cell2
     } = dataSet;
+    if (templateType && (templateType.value === '4' || templateType.value === '6') && dataElementColumn) {
+        data = nest(data, [dataElementColumn.value]);
+    }
+
     const elements = allDataElementsTypes(forms);
     if (templateType.value !== '2') {
         forms.forEach(f => {
@@ -211,7 +213,7 @@ export const processDataSet = (data, dataSet) => {
                                 if (foundOU) {
                                     orgUnit = foundOU;
                                 } else {
-                                    errors = [...errors, {error: `Organisation unit ${ou} not found`}]
+                                    errors = [...errors, { error: `Organisation unit ${ou} not found` }]
                                 }
                             }
 
@@ -302,9 +304,8 @@ export const processDataSet = (data, dataSet) => {
                     const period = periodVal ? periodVal['v'] : null;
                     const val = data[vCell];
                     const value = val ? val.v : null;
-
                     const orgUnit = searchSourceOrgUnits(ou, sourceOrganisationUnits);
-                    if (orgUnit && orgUnit.mapping && value && period) {
+                    if (orgUnit && orgUnit.mapping && value !== null && value !== '' && period !== null) {
                         if (validate(elements, v.value.dataElement, value)) {
                             dataValues = [...dataValues, {
                                 orgUnit: orgUnit.mapping.value,
@@ -325,7 +326,7 @@ export const processDataSet = (data, dataSet) => {
                                 error: `Organisation unit ${ou} on cell ${oCell} not found`,
                             }]
                         }
-                        if (orgUnit) {
+                        if (orgUnit && !orgUnit.mapping) {
                             errors = [...errors, {
                                 error: `Organisation unit ${ou} on cell ${oCell} not mapped`,
                             }]
@@ -336,9 +337,9 @@ export const processDataSet = (data, dataSet) => {
                             }]
                         }
 
-                        if (!value) {
+                        if (!value || value === '') {
                             errors = [...errors, {
-                                error: `Value missing`,
+                                error: `Value on cell ${vCell} is missing`,
                             }]
                         }
                     }
@@ -346,12 +347,6 @@ export const processDataSet = (data, dataSet) => {
                 });
             }
         });
-    }
-    dataValues = dataValues.filter(dv => {
-        return dv.orgUnit && dv.period
-    });
-    if (dataValues.length > 0) {
-        dataValues = alasql('SELECT orgUnit,dataElement,attributeOptionCombo,categoryOptionCombo,period,SUM(`value`) AS `value` FROM ? GROUP BY orgUnit,dataElement,attributeOptionCombo,categoryOptionCombo,period', [dataValues]);
     }
     return {
         dataValues,
@@ -491,6 +486,10 @@ export const searchSourceOrgUnits = (orgUnit, organisationUnits) => {
         return u.name === orgUnit;
     })
 };
+
+export const makeSourceUnitTree = (organisationUnits) => {
+    return _.fromPairs(organisationUnits.map(u => [u.name, u]));
+}
 
 export const getLocation = (href) => {
     const match = href.match(/^(https?:)\/\/(([^:/?#]*)(?::([0-9]+))?)([/]?[^?#]*)(\?[^#]*|)(#.*|)$/);
@@ -632,7 +631,7 @@ export const isTracker = (program) => {
     return program.programType === 'WITH_REGISTRATION';
 };
 
-export const groupEntities = (attribute, trackedEntityInstances,) => {
+export const groupEntities = (attribute, trackedEntityInstances, ) => {
     const entities = trackedEntityInstances.map(e => {
         const uniqueAttribute = _.find(e.attributes, {
             attribute
@@ -679,7 +678,6 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
         sourceOrganisationUnits,
         incidentDateProvided
     } = program;
-
 
     if (uniqueColumn) {
         data = data.filter(d => {
@@ -856,7 +854,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
             });
             let groupedEvents = _.groupBy(events, 'programStage');
             if (client.previous.length > 1) {
-                duplicates = [...duplicates, {identifier: client.client}]
+                duplicates = [...duplicates, { identifier: client.client }]
             } else if (client.previous.length === 1) {
                 client.previous.forEach(p => {
                     let enrollments = p['enrollments'];
@@ -1101,7 +1099,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
 export const searchSavedEvent = (programStages, event, eventByDate, eventsByDataElement) => {
     const programStage = programStages[0];
 
-    const {eventDateIdentifiesEvent, programStageDataElements} = programStage;
+    const { eventDateIdentifiesEvent, programStageDataElements } = programStage;
 
 
     const identifiesEvents = programStageDataElements.filter(psde => {
@@ -1130,7 +1128,7 @@ export const searchSavedEvent = (programStages, event, eventByDate, eventsByData
             }
             return null;
         } else {
-            return {...event, update: false};
+            return { ...event, update: false };
         }
     } else if (eventDateIdentifiesEvent) {
         const ev1 = eventByDate[event.eventDate];
@@ -1148,7 +1146,7 @@ export const searchSavedEvent = (programStages, event, eventByDate, eventsByData
             }
             return null;
         } else {
-            return {...event, update: false};
+            return { ...event, update: false };
         }
 
     } else if (identifiesEvents.length > 0) {
@@ -1167,10 +1165,10 @@ export const searchSavedEvent = (programStages, event, eventByDate, eventsByData
             }
             return null;
         } else {
-            return {...event, update: false};
+            return { ...event, update: false };
         }
     } else {
-        return {...event, update: false}
+        return { ...event, update: false }
     }
 };
 
@@ -1290,7 +1288,7 @@ export const processEvents = (program, data, uniqueDatesData, uniqueDataElementD
         return _.omit(e, 'update');
     });
 
-    return {eventsUpdate, newEvents, conflicts, errors}
+    return { eventsUpdate, newEvents, conflicts, errors }
 };
 
 export const partialParamSearch = (search, params) => {

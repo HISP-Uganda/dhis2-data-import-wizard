@@ -7,7 +7,6 @@ import { NotificationManager } from "react-notifications";
 import Schedule from "./Schedule";
 import { convertDataToURL } from "../utils/utils";
 
-
 configure({
     enforceActions: "observed"
 });
@@ -303,26 +302,38 @@ class IntegrationStore {
         // if (this.activeStep === 3 && (!this.program.isTracker || (!this.program.createEntities && !this.program.updateEntities))) {
         if (this.activeStep === 3 && !this.program.isTracker) {
             this.changeSet(this.activeStep + 2);
+        } else if (this.activeStep === 5) {
+            await this.program.process();
+            this.changeSet(this.activeStep + 1);
         } else if (this.activeStep === 6 && this.program.totalImports === 0) {
+            await this.saveMapping();
             this.handleReset()
         } else if (this.activeStep === 7) {
+            await this.saveMapping();
             this.handleReset()
         } else {
             this.changeSet(this.activeStep + 1);
         }
-
         // if (this.activeStep === 8) {
-        //     await this.saveMapping();
+
         //     this.changeSet(0)
         // }
     };
 
     @action
-    handleNextAggregate = () => {
+    handleNextAggregate = async () => {
         if (this.dataSet.templateType && (this.dataSet.templateType.value === '4' || (this.dataSet.templateType.value === '5' && this.dataSet.multiplePeriods)) && this.activeAggregateStep === 4) {
+            this.changeAggregateSet(this.activeAggregateStep + 2);
+        } else if (this.activeAggregateStep === 4 && this.dataSet.isExcel) {
+            await this.dataSet.process();
             this.changeAggregateSet(this.activeAggregateStep + 1);
-            this.handleNextAggregate();
+        } else if (this.dataSet.templateType && this.activeAggregateStep === 4 && this.dataSet.templateType.value === '5' && !this.dataSet.multiplePeriods) {
+            this.dataSet.openDialog()
+            await this.dataSet.pullIndicatorData();
+            this.dataSet.closeDialog();
+            this.changeAggregateSet(this.activeAggregateStep + 1);
         } else if (this.activeAggregateStep === 6) {
+            await this.saveAggregate();
             this.handleResetAggregate()
         } else {
             this.changeAggregateSet(this.activeAggregateStep + 1);
@@ -360,7 +371,7 @@ class IntegrationStore {
     };
 
     @action
-    saveMapping = () => {
+    saveMapping = async () => {
         this.program.saveMapping(this.mappings);
     };
 
@@ -1064,9 +1075,10 @@ class IntegrationStore {
                     || (this.dataSet.multiplePeriods && (!this.dataSet.startPeriod || !this.dataSet.endPeriod))
                     || (!this.dataSet.multiplePeriods && !this.dataSet.periodExists)
             } else if (this.dataSet.templateType.value === '5') {
+                console.log((!this.dataSet.periodExists2 || !(this.dataSet.multiplePeriods && this.dataSet.startPeriod && this.dataSet.endPeriod)));
                 return !this.dataSet
                     || !this.dataSet.currentLevel
-                    || !this.dataSet.periodExists2
+                    || !(this.dataSet.periodExists2 || (this.dataSet.multiplePeriods && this.dataSet.startPeriod && this.dataSet.endPeriod))
                     || this.dataSet.selectedIndicators.length === 0
             }
         } else if (this.activeAggregateStep === 4) {

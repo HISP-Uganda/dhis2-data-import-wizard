@@ -28,6 +28,7 @@ import { Clear, Done } from "@material-ui/icons";
 import Grid from "@material-ui/core/Grid";
 import { GreenCheckbox } from "../common";
 import customStyles from "../customStyles";
+import Progress from '../progress';
 
 
 const styles = theme => ({
@@ -50,12 +51,6 @@ class Step4 extends React.Component {
         super(props);
         const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
-    }
-
-    componentDidMount() {
-        if (this.integrationStore.program.isTracker && this.integrationStore.program.fetchingEntities === 0) {
-            this.integrationStore.program.searchTrackedEntities();
-        }
     }
 
     render() {
@@ -289,6 +284,8 @@ class Step4 extends React.Component {
                 button will
                 be disabled
             </FormHelperText>
+            <Progress open={this.integrationStore.program.dialogOpen}
+                onClose={this.integrationStore.program.closeDialog} message={this.integrationStore.program.message} />
         </div>
     }
 }

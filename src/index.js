@@ -10,7 +10,9 @@ import { Provider } from "mobx-react";
 const config = {};
 if (process.env.NODE_ENV === 'development') {
     config.baseUrl = `http://localhost:8080/api`;
-    config.headers = { Authorization: 'Basic YWRtaW46ZGlzdHJpY3Q=' }; // admin
+    config.headers = { Authorization: 'Basic YWRtaW46ZGlzdHJpY3Q=' };
+    // config.baseUrl = `http://dhis2-staging.kuunika.org:8087/api`;
+    // config.headers = { Authorization: 'Basic bWJvbmdlbmljaGl6b25kYTpBYmlreWwyMkA=' };
 } else {
     let baseUrl = '';
     let urlArray = window.location.pathname.split('/');

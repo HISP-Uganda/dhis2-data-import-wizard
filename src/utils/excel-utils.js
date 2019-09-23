@@ -42,12 +42,12 @@ export const processMergedCells = (mergedCells, data, mergedCell, processed, dat
                 if (data[cell_ref]) {
                     let column = {
                         column: XLSX.utils.encode_col(i),
-                        name: dataElement + ": " + data[cell_ref]['v']
+                        name: dataElement + " " + data[cell_ref]['v']
                     };
                     if (mergedCell.previous) {
                         column = {
                             ...column,
-                            name: dataElement + ": " + mergedCell.previous + ', ' + data[cell_ref]['v']
+                            name: dataElement + " " + mergedCell.previous + ', ' + data[cell_ref]['v']
                         }
                     }
 
