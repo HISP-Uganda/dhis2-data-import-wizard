@@ -56,8 +56,6 @@ class D1 extends React.Component {
                 onChangePage={this.integrationStore.handleChangeElementPage('d1')}
                 onChangeRowsPerPage={this.integrationStore.handleChangeElementRowsPerPage('d1')}
             />
-            {/* <Progress open={this.integrationStore.dialogOpen}
-                      onClose={this.integrationStore.closeDialog}/> */}
         </div>
 
     }

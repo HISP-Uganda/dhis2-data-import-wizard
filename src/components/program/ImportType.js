@@ -1,14 +1,16 @@
-import {inject, observer} from "mobx-react";
+import { inject, observer } from "mobx-react";
 import React from "react";
-import {withStyles} from "@material-ui/core/styles";
+import { withStyles } from "@material-ui/core/styles";
 import Grid from "@material-ui/core/Grid";
-import {InputField} from "@dhis2/d2-ui-core";
+import { InputField } from "@dhis2/d2-ui-core";
 import Dropzone from "react-dropzone";
 import Select from "react-select";
 import Params from "./Params";
 
-import {CloudUpload} from "@material-ui/icons";
+import { CloudUpload } from "@material-ui/icons";
 import Progress from "../progress";
+import { changeStyle } from "../../utils/data-utils";
+
 
 
 const styles = theme => ({
@@ -24,8 +26,8 @@ const styles = theme => ({
 });
 
 const items = [
-    {label: 'Excel/CSV Listing', value: "1"},
-    {label: 'Other Systems via API (REST)', value: "2"},
+    { label: 'Excel/CSV Listing', value: "1" },
+    { label: 'Other Systems via API (REST)', value: "2" },
 ];
 
 
@@ -40,12 +42,12 @@ class ImportType extends React.Component {
     };
 
     handleChange = event => {
-        this.setState({value: event.target.value});
+        this.setState({ value: event.target.value });
     };
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -59,7 +61,7 @@ class ImportType extends React.Component {
                         type="text"
                         fullWidth
                         value={this.integrationStore.program.url}
-                        onChange={(value) => this.integrationStore.program.handelURLChange(value)}/>
+                        onChange={(value) => this.integrationStore.program.handelURLChange(value)} />
                 </Grid>
             </Grid>
 
@@ -70,7 +72,7 @@ class ImportType extends React.Component {
                         type="text"
                         fullWidth
                         value={this.integrationStore.program.username}
-                        onChange={(value) => this.integrationStore.program.setUsername(value)}/>
+                        onChange={(value) => this.integrationStore.program.setUsername(value)} />
                 </Grid>
                 <Grid item xs={6}>
                     <InputField
@@ -78,28 +80,28 @@ class ImportType extends React.Component {
                         type="text"
                         fullWidth
                         value={this.integrationStore.program.password}
-                        onChange={(value) => this.integrationStore.program.setPassword(value)}/>
+                        onChange={(value) => this.integrationStore.program.setPassword(value)} />
                 </Grid>
             </Grid>
 
-            <Params/>
+            <Params />
         </div>
     };
 
     upload = () => {
         return <Dropzone accept=".csv, .xls, .xlsx" onDrop={this.integrationStore.program.onDrop}>
 
-            {({getRootProps, getInputProps}) => (
+            {({ getRootProps, getInputProps }) => (
                 <section>
                     <div {...getRootProps()}>
-                        <input {...getInputProps()}     />
-                        <br/>
+                        <input {...getInputProps()} />
+                        <br />
                         <p align="center">Drop files here</p>
                         <p align="center">
-                            <CloudUpload fontSize="large"/>
+                            <CloudUpload fontSize="large" />
                         </p>
                         <p align="center">{this.integrationStore.program.fileName}</p>
-                        <p align="center" style={{color: 'red'}}>{this.integrationStore.program.uploadMessage}</p>
+                        <p align="center" style={{ color: 'red' }}>{this.integrationStore.program.uploadMessage}</p>
                     </div>
                 </section>
             )}
@@ -126,9 +128,9 @@ class ImportType extends React.Component {
                         value={this.integrationStore.program.mappingDescription}
                         onChange={(value) => this.integrationStore.program.handleMappingDescriptionChange(value)}
                     />
-                    <br/>
-                    <br/>
-                    <span style={{fontWeight: 'bold'}}>Select import type</span>
+                    <br />
+                    <br />
+                    <span style={{ fontWeight: 'bold' }}>Select import type</span>
                     <Select
                         placeholder="Import Type"
                         value={this.integrationStore.program.templateType}
@@ -136,6 +138,7 @@ class ImportType extends React.Component {
                         onChange={this.integrationStore.handleTemplateTypeChange}
                         isClearable
                         isSearchable
+                        styles={changeStyle(this.integrationStore.program.templateType)}
                     />
                 </Grid>
             </Grid>
@@ -147,7 +150,7 @@ class ImportType extends React.Component {
             </Grid>
 
             <Progress open={this.integrationStore.program.dialogOpen}
-                      onClose={this.integrationStore.program.closeDialog} message={"Uploading..."}/>
+                onClose={this.integrationStore.program.closeDialog} message={"Uploading..."} />
         </div>
 
 

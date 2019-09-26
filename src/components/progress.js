@@ -1,11 +1,11 @@
-import React, {Component} from "react";
+import React, { Component } from "react";
 import * as PropTypes from "prop-types";
-import {withStyles} from "@material-ui/core";
+import { withStyles } from "@material-ui/core";
 import MuiDialogContent from "@material-ui/core/DialogContent";
 import DialogContentText from '@material-ui/core/DialogContentText';
 import Dialog from '@material-ui/core/Dialog';
-import CircularProgress from "@material-ui/core/CircularProgress";
-import {inject, observer} from "mobx-react";
+import { inject, observer } from "mobx-react";
+import { Spin } from 'antd';
 
 
 const DialogContent = withStyles(theme => ({
@@ -24,12 +24,12 @@ class Progress extends Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
     render() {
-        const {open, onClose, message} = this.props;
+        const { open, onClose, message } = this.props;
         return (<Dialog
             open={open}
             onClose={onClose}
@@ -44,14 +44,17 @@ class Progress extends Component {
                     backgroundColor: 'rgba(0, 0, 0, 0.5)',
                     boxShadow: 'none',
                     display: 'flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    width: '100vw',
+                    height: '100vh'
                 },
             }}
         >
             <DialogContent>
-                <CircularProgress variant="indeterminate" size={24}
-                                  thickness={4} color="secondary"/>
-                <DialogContentText id="alert-dialog-description" style={{color: 'white'}}>
+                <Spin size="large" />
+                <DialogContentText id="alert-dialog-description" style={{ color: 'white' }}>
                     &nbsp;&nbsp;{message}
                 </DialogContentText>
             </DialogContent>

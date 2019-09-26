@@ -108,6 +108,7 @@ class App extends Component {
     d2.i18n.translations['last'] = 'Last Run';
     d2.i18n.translations['next'] = 'Next Run';
     d2.i18n.translations['created'] = 'Created';
+    d2.i18n.translations['import'] = 'Import Data';
 
     this.state = {
       d2,

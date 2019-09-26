@@ -12,7 +12,6 @@ import {
     postAxios
 } from '../utils/data-utils'
 import { processMergedCells } from '../utils/excel-utils'
-import { generate } from 'shortid';
 import { NotificationManager } from "react-notifications";
 import Param from "./Param";
 import { Store as GroupStore } from '@dhis2/d2-ui-core';
@@ -136,30 +135,17 @@ class DataSet {
     @observable useProxy = false;
     @observable proxy = '';
     @observable processed;
+    @observable isUploadingFromPage;
 
     @action setDialogOpen = val => this.dialogOpen = val;
     @action setProxy = val => this.proxy = val;
+    @action setIsUploadingFromPage = val => this.isUploadingFromPage = val;
     @action openDialog = () => this.setDialogOpen(true);
     @action closeDialog = () => this.setDialogOpen(false);
 
     @action
     setD2 = (d2) => {
         this.d2 = d2;
-    };
-
-    @action
-    onProgress = ev => {
-        this.uploaded = (ev.loaded * 100) / ev.total
-    };
-
-    @action
-    onLoadStart = ev => {
-        this.uploaded = 0
-    };
-
-    @action
-    onLoadEnd = ev => {
-        this.uploaded = null
     };
 
     @action
@@ -195,10 +181,13 @@ class DataSet {
     @action setFileName = val => this.fileName = val;
 
 
-    @action setSelectedSheet = val => {
+    @action setSelectedSheet = async val => {
         this.selectedSheet = val;
         if (val && this.workbook) {
             this.setWorkSheet(this.workbook.Sheets[val.value]);
+            if (this.isUploadingFromPage) {
+                await this.process()
+            }
         }
     };
 
@@ -818,7 +807,7 @@ class DataSet {
             this.uploadMessage = '';
             const f = accepted[0];
             this.setFileName(f.name);
-
+            this.setMessage('Uploading');
             const workbook = await instance.expensive(accepted);
             this.setWorkbook(workbook);
 
@@ -1044,11 +1033,19 @@ class DataSet {
         this.setWorkSheet(null);
         this.setWorkbook(null);
         this.setSelectedSheet(null);
+        this.setProcessed(null);
     };
 
-    @action completeDataSets = () => {
+    @action completeDataSets = (data) => {
         const api = this.d2.Api.getApi();
-        return api.post('completeDataSetRegistrations', { completeDataSetRegistrations: this.whatToComplete }, {});
+        const p = data.map(d => {
+            return _.pick(d, ['orgUnit', 'period']);
+        });
+
+        const whatToComplete = _.uniqWith(p, _.isEqual).map(p => {
+            return { dataSet: this.id, organisationUnit: p.orgUnit, period: p.period }
+        });
+        return api.post('completeDataSetRegistrations', { completeDataSetRegistrations: whatToComplete }, {});
     };
 
     @action create1 = () => {
@@ -1062,6 +1059,26 @@ class DataSet {
             NotificationManager.error(`Could not insert data values ${e.message}`, 'Error', 5000);
         }
     };
+
+    @action insertDataSet = async (message = '') => {
+        const total = this.processed.dataValues.length;
+        let initial = 0;
+        if (total > 0) {
+            const chunked = _.chunk(this.processed.dataValues, 5000);
+            for (const c of chunked) {
+                const current = c.length + initial
+                this.setMessage(`Inserting ${current} of ${total} ${message}`);
+                const results = await this.insertDataValues({ dataValues: c });
+                this.setResponses(results);
+                this.setMessage(`Finished inserting processed data`);
+                this.setMessage(`Completing data set`);
+                await this.completeDataSets(c);
+                this.setMessage(`Finished completing data set`);
+                initial = current
+            }
+            this.destroy();
+        }
+    }
 
 
     @action create = async () => {
@@ -1092,31 +1109,13 @@ class DataSet {
                                     try {
                                         const processed = await instance.processDataSetData(data, dataSet);
                                         this.setProcessed(processed);
-                                        this.setMessage(`Inserting processed data for ${ou.name}`);
-                                        const total = processed.dataValues.length;
-                                        let initial = 0;
-                                        if (processed.dataValues && processed.dataValues.length > 0) {
-                                            const chunked = _.chunk(processed.dataValues, 5000);
-                                            for (const c of chunked) {
-                                                const current = c.length + initial
-                                                this.setMessage(`Inserting ${current} of ${total} for ${ou.name}`);
-                                                const results = await this.insertDataValues({ dataValues: c });
-                                                this.setResponses(results);
-                                                initial = current
-                                            }
-                                            this.setMessage(`Finished inserting processed data`);
-                                            this.setMessage(`Completing data set`);
-                                            await this.completeDataSets();
-                                            this.setMessage(`Finished completing data set`);
-                                            this.destroy();
-                                        }
-
+                                        this.setMessage(`Inserting processed data for ${ou.name} for period ${p}`);
+                                        await this.insertDataSet(` for ${ou.name} for period ${p}`)
                                     } catch (e) {
                                         console.log(e);
                                     }
                                 }
                             }
-
                         } else {
                             NotificationManager.warning('Either period type not supported or start and end date not provided', 'Warning');
                         }
@@ -1130,23 +1129,7 @@ class DataSet {
                                 const processed = await instance.processDataSetData(data, dataSet);
                                 this.setProcessed(processed);
                                 this.setMessage(`Inserting processed data for ${ou.name}`);
-                                const total = processed.dataValues.length;
-                                let initial = 0;
-                                if (processed.dataValues && processed.dataValues.length > 0) {
-                                    const chunked = _.chunk(processed.dataValues, 5000);
-                                    for (const c of chunked) {
-                                        const current = c.length + initial
-                                        this.setMessage(`Inserting ${current} of ${total} for ${ou.name}`);
-                                        const results = await this.insertDataValues({ dataValues: c });
-                                        this.setResponses(results);
-                                        initial = current
-                                    }
-                                    this.setMessage(`Finished inserting processed data`);
-                                    this.setMessage(`Completing data set`);
-                                    await this.completeDataSets();
-                                    this.setMessage(`Finished completing data set`);
-                                    this.destroy();
-                                }
+                                await this.insertDataSet(`for ${ou.name}`)
 
                             } catch (e) {
                                 console.log(e);
@@ -1166,48 +1149,12 @@ class DataSet {
                         this.setMessage(`Pulling from analytics for period ${p}`);
                         await this.pullIndicatorData();
                         this.setMessage(`Finished pulling from analytics for period ${p}`);
-
-                        if (this.processed.dataValues && this.processed.dataValues.length > 0) {
-                            const total = this.processed.dataValues.length;
-                            let initial = 0;
-                            const chunked = _.chunk(this.processed.dataValues, 5000);
-                            for (const c of chunked) {
-                                const current = c.length + initial
-                                this.setMessage(`Inserting ${current} of ${total}`);
-                                const results = await this.insertDataValues({ dataValues: c });
-                                this.setResponses(results);
-                                initial = current
-                            }
-
-                            this.setMessage(`Finished inserting processed data`);
-                            this.setMessage(`Completing data set`);
-                            await this.completeDataSets();
-                            this.setMessage(`Finished completing data set`);
-                            this.destroy();
-                        }
+                        await this.insertDataSet();
                     }
                 }
             } else {
                 this.setMessage(`Inserting processed data`);
-
-                if (this.processed.dataValues && this.processed.dataValues.length > 0) {
-                    const total = this.processed.dataValues.length;
-                    let initial = 0;
-                    const chunked = _.chunk(this.processed.dataValues, 5000);
-                    for (const c of chunked) {
-                        const current = c.length + initial
-                        this.setMessage(`Inserting ${current} of ${total}`);
-                        const results = await this.insertDataValues({ dataValues: c });
-                        this.setResponses(results);
-                        initial = current
-                    }
-
-                    this.setMessage(`Finished inserting processed data`);
-                    this.setMessage(`Completing data set`);
-                    await this.completeDataSets();
-                    this.setMessage(`Finished completing data set`);
-                    this.destroy();
-                }
+                await this.insertDataSet();
             }
         } catch (e) {
             this.setResponses(e);
@@ -1364,6 +1311,7 @@ class DataSet {
 
     @action process = async () => {
         this.openDialog()
+        this.setMessage('Processing');
         const dataSet = JSON.parse(JSON.stringify(this.canBeSaved));
         const data = JSON.parse(JSON.stringify(this.data))
         const dataResponse = await instance.processDataSetData(data, dataSet);
@@ -1412,15 +1360,14 @@ class DataSet {
                 }
 
                 if (response['conflicts']) {
-                    const processedConflicts = response['conflicts'].map(c => {
-                        return { ...c, id: generate() }
-                    });
+                    const processedConflicts = response['conflicts'];
                     conflicts = [...conflicts, ...processedConflicts]
                 }
             } else if (response && response['httpStatusCode'] === 500) {
                 errors = [...errors, { ...response['error'] }];
             }
         });
+        conflicts = _.uniqWith(conflicts, _.isEqual)
         const importCount = {
             deleted: deletedTotal,
             imported: importedTotal,
@@ -1846,7 +1793,7 @@ class DataSet {
     @computed get disableImport() {
         const templates = ['1', '2', '3'];
         if (this.templateType && (templates.indexOf(this.templateType.value) !== -1 || (this.templateType.value === '5' && !this.multiplePeriods))) {
-            return _.keys(this.data).length === 0
+            return !this.processed || this.processed.dataValues.length === 0
         }
         return false;
     }
@@ -1865,6 +1812,10 @@ class DataSet {
 
     @computed get uniqueErrors() {
         return _.uniqBy(this.processed.errors, 'error');
+    }
+
+    @computed get isExcel() {
+        return this.getImportDataSource === 1;
     }
 }
 

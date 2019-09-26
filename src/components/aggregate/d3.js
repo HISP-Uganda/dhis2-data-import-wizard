@@ -91,9 +91,6 @@ class D3 extends React.Component {
             this.integrationStore.dataSet.setDefaults();
         } else if (this.integrationStore.dataSet.templateType.value === '5') {
             this.integrationStore.dataSet.setDefaultIndicators();
-            // if (!this.integrationStore.dataSet.multiplePeriods) {
-            //     await this.integrationStore.dataSet.pullIndicatorData();
-            // }
         }
     }
 
@@ -243,7 +240,7 @@ class D3 extends React.Component {
                         {this.integrationStore.dataSet.mergedCellsWithDataElementRow.map(de => {
                             return <TableRow key={de.column} hover>
                                 <TableCell>
-                                    {de.name}
+                                    {typeof de.name === 'object' ? JSON.stringify(de.name) : de.name}
                                 </TableCell>
                                 <TableCell>
                                     {this.displayDynamicCell(de)}

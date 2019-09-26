@@ -1,6 +1,6 @@
-import {inject, observer} from "mobx-react";
+import { inject, observer } from "mobx-react";
 import React from "react";
-import {withStyles} from "@material-ui/core/styles";
+import { withStyles } from "@material-ui/core/styles";
 import TableHead from "@material-ui/core/TableHead/TableHead";
 import TableRow from "@material-ui/core/TableRow/TableRow";
 import TableCell from "@material-ui/core/TableCell/TableCell";
@@ -12,12 +12,12 @@ import Tabs from "@material-ui/core/Tabs";
 import Tab from "@material-ui/core/Tab";
 import D4 from "./d4";
 import MUITable from "@material-ui/core/Table";
-import {Table} from 'antd';
+import { Table } from 'antd';
 
 
 const columns = [
-    {title: 'Affected', dataIndex: 'object', key: 'object'},
-    {title: 'Message', dataIndex: 'value', key: 'value'}
+    { title: 'Affected', dataIndex: 'object', key: 'object' },
+    { title: 'Message', dataIndex: 'value', key: 'value' }
 ];
 
 
@@ -37,7 +37,7 @@ const styles = theme => ({
 
 function TabContainer(props) {
     return (
-        <Typography component="div" style={{padding: 8 * 3}}>
+        <Typography component="div" style={{ padding: 8 * 3 }}>
             {props.children}
         </Typography>
     );
@@ -55,24 +55,22 @@ class Summary extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
-
         this.state = {
             value: this.integrationStore.dataSet.isDhis2 ? 1 : 0,
         };
-
     }
 
 
     handleChange = (event, value) => {
-        this.setState({value});
+        this.setState({ value });
     };
 
     render() {
-        const {classes} = this.props;
-        const {value} = this.state;
-        const {importCount, conflicts} = this.integrationStore.dataSet.processedResponses;
+        const { classes } = this.props;
+        const { value } = this.state;
+        const { importCount, conflicts } = this.integrationStore.dataSet.processedResponses;
 
         return <div className={classes.root}>
             <AppBar position="static" color="primary">
@@ -84,15 +82,13 @@ class Summary extends React.Component {
                     indicatorColor="secondary"
                     textColor="inherit"
                 >
-                    <Tab label="Data"/>
-                    <Tab label="Summary"/>
+                    <Tab label="Data" />
+                    <Tab label="Summary" />
                 </Tabs>
             </AppBar>
 
             {value === 0 && <TabContainer>
-
-                {this.integrationStore.dataSet.isDhis2 ? <div>{''}</div> : <D4/>}
-
+                {this.integrationStore.dataSet.isDhis2 ? <div></div> : this.integrationStore.dataSet.processed ? <D4 /> : <div></div>}
             </TabContainer>}
             {value === 1 && <TabContainer>
 
@@ -145,7 +141,7 @@ class Summary extends React.Component {
                     columns={columns}
                     size="small"
                     rowKey="id"
-                    pagination={{defaultPageSize: 5}}
+                    pagination={{ defaultPageSize: 5 }}
                     dataSource={conflicts}
                 />
             </TabContainer>}

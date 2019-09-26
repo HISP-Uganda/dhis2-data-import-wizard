@@ -1,5 +1,5 @@
 import React from 'react';
-import {withStyles} from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/core/styles';
 import Select from 'react-select';
 import Checkbox from "@material-ui/core/Checkbox";
 import Table from "@material-ui/core/Table";
@@ -9,13 +9,15 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import TablePagination from "@material-ui/core/TablePagination";
 import FormHelperText from "@material-ui/core/FormHelperText";
-import {InputField} from '@dhis2/d2-ui-core';
+import { InputField } from '@dhis2/d2-ui-core';
 
-import {inject, observer} from "mobx-react";
+import { inject, observer } from "mobx-react";
 import Button from "@material-ui/core/Button";
 import Dialog from "@material-ui/core/Dialog";
-import {Clear, Done} from "@material-ui/icons";
-import {DialogActions, DialogContent, DialogTitle} from "../Fragments";
+import { Clear, Done } from "@material-ui/icons";
+import { DialogActions, DialogContent, DialogTitle } from "../Fragments";
+import { changeStyle } from "../../utils/data-utils";
+
 
 
 const styles = theme => ({
@@ -33,7 +35,7 @@ class Step3 extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -42,8 +44,8 @@ class Step3 extends React.Component {
     }
 
     render() {
-        const {classes} = this.props;
-        const {program} = this.integrationStore;
+        const { classes } = this.props;
+        const { program } = this.integrationStore;
 
         return <div>
 
@@ -58,18 +60,18 @@ class Step3 extends React.Component {
             <Table className={classes.table}>
                 <TableHead>
                     <TableRow>
-                        <TableCell style={{width: 30}}>
+                        <TableCell style={{ width: 30 }}>
                             Unique
                         </TableCell>
-                        <TableCell style={{width: 30}}>
+                        <TableCell style={{ width: 30 }}>
                             Mandatory
                         </TableCell>
                         <TableCell>
                             Attribute name
                         </TableCell>
                         <TableCell>Attribute mapping</TableCell>
-                        <TableCell style={{width: 50}}>Options Mapping</TableCell>
-                        <TableCell style={{width: 50}}>Mapping Status</TableCell>
+                        <TableCell style={{ width: 50 }}>Options Mapping</TableCell>
+                        <TableCell style={{ width: 50 }}>Mapping Status</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -80,10 +82,10 @@ class Step3 extends React.Component {
                                 <Button onClick={n.handleClickOpen}>Map Options</Button>
 
                                 <Dialog onClose={n.handleClose} open={n.open}
-                                        aria-labelledby="simple-dialog-title">
+                                    aria-labelledby="simple-dialog-title">
                                     {/*<DialogTitle id="simple-dialog-title">Mapping options</DialogTitle>*/}
                                     <DialogTitle id="alert-dialog-title"
-                                                 onClose={n.handleClose}>Mapping options</DialogTitle>
+                                        onClose={n.handleClose}>Mapping options</DialogTitle>
                                     <DialogContent>
                                         <Table className={classes.table}>
                                             <TableHead>
@@ -135,10 +137,10 @@ class Step3 extends React.Component {
                         return (
                             <TableRow key={n.trackedEntityAttribute.id} hover>
                                 <TableCell>
-                                    <Checkbox disabled checked={n.trackedEntityAttribute.unique}/>
+                                    <Checkbox disabled checked={n.trackedEntityAttribute.unique} />
                                 </TableCell>
                                 <TableCell>
-                                    <Checkbox disabled checked={n.mandatory}/>
+                                    <Checkbox disabled checked={n.mandatory} />
                                 </TableCell>
                                 <TableCell>
                                     {n.trackedEntityAttribute.displayName}
@@ -151,6 +153,7 @@ class Step3 extends React.Component {
                                         value={n.column}
                                         options={program.columns}
                                         onChange={n.setColumn}
+                                        styles={changeStyle(n.column)}
                                     />
                                 </TableCell>
 
@@ -158,7 +161,7 @@ class Step3 extends React.Component {
                                     {de}
                                 </TableCell>
                                 <TableCell>
-                                    {!!n.column ? <Done/> : <Clear/>}
+                                    {!!n.column ? <Done /> : <Clear />}
                                 </TableCell>
                             </TableRow>
                         );

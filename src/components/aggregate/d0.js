@@ -1,21 +1,19 @@
-import {inject, observer} from "mobx-react";
+import { inject, observer } from "mobx-react";
 import React from "react";
-import {withStyles} from "@material-ui/core/styles";
+import { withStyles } from "@material-ui/core/styles";
 import Table from "@dhis2/d2-ui-table";
 import red from '@material-ui/core/colors/red';
 
 import MuiDialogTitle from '@material-ui/core/DialogTitle';
 import MuiDialogContent from '@material-ui/core/DialogContent';
 import MuiDialogActions from '@material-ui/core/DialogActions';
-
 import Typography from '@material-ui/core/Typography';
 import IconButton from '@material-ui/core/IconButton';
 import CloseIcon from '@material-ui/icons/Close';
-
 import Dialog from '@material-ui/core/Dialog';
 import Button from '@material-ui/core/Button';
-import {Delete, ArrowUpward, CloudDownload} from "@material-ui/icons";
-import Summary from "./Summary";
+import { Delete, ArrowUpward, CloudDownload } from "@material-ui/icons";
+import SummaryPage from "./SummaryPage";
 import Progress from "../progress";
 import D20 from './d20';
 
@@ -32,13 +30,13 @@ const DialogTitle = withStyles(theme => ({
         color: theme.palette.grey[500],
     },
 }))(props => {
-    const {children, classes, onClose} = props;
+    const { children, classes, onClose } = props;
     return (
         <MuiDialogTitle disableTypography className={classes.root}>
             <Typography variant="h6">{children}</Typography>
             {onClose ? (
                 <IconButton aria-label="Close" className={classes.closeButton} onClick={onClose}>
-                    <CloseIcon/>
+                    <CloseIcon />
                 </IconButton>
             ) : null}
         </MuiDialogTitle>
@@ -83,7 +81,7 @@ class D0 extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -92,7 +90,7 @@ class D0 extends React.Component {
     }
 
     render() {
-        const {classes} = this.props;
+        const { classes } = this.props;
         return <div>
             {this.integrationStore.aggregates.length > 0 ?
                 <Table
@@ -101,13 +99,13 @@ class D0 extends React.Component {
                     contextMenuActions={this.integrationStore.tableAggActions}
                     contextMenuIcons={
                         {
-                            upload: <ArrowUpward/>,
-                            template: <CloudDownload/>,
-                            delete: <Delete/>
+                            import: <ArrowUpward />,
+                            template: <CloudDownload />,
+                            delete: <Delete />
                         }
                     }
                     primaryAction={this.integrationStore.useSavedAggregate}
-                /> : <p style={{textAlign: 'center', fontSize: 15}}>There are no items</p>}
+                /> : <p style={{ textAlign: 'center', fontSize: 15 }}>There are no items</p>}
 
             <Dialog
                 fullWidth={true}
@@ -120,8 +118,8 @@ class D0 extends React.Component {
                     {"Upload data"}
                 </DialogTitle>
                 <DialogContent>
-                    <D20/>
-                    <Summary/>
+                    <D20 />
+                    <SummaryPage />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={this.integrationStore.closeUploadDialog} color="primary">
@@ -142,12 +140,12 @@ class D0 extends React.Component {
                         onClick={this.integrationStore.dataSet.create}>
                         Import
                     </Button>
-
-
                 </DialogActions>
             </Dialog>
-            <Progress open={this.integrationStore.dialogOpen}
-                      onClose={this.integrationStore.closeDialog}/>
+            <Progress open={this.integrationStore.isDataSet ? this.integrationStore.dataSet.dialogOpen : this.integrationStore.dialogOpen}
+                onClose={this.integrationStore.isDataSet ? this.integrationStore.dataSet.closeDialog : this.integrationStore.closeDialog}
+                message={this.integrationStore.isDataSet ? this.integrationStore.dataSet.message : this.integrationStore.message}
+            />
         </div>
     }
 }

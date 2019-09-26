@@ -29,6 +29,8 @@ import Grid from "@material-ui/core/Grid";
 import { GreenCheckbox } from "../common";
 import customStyles from "../customStyles";
 import Progress from '../progress';
+import { changeStyle } from "../../utils/data-utils";
+
 
 
 const styles = theme => ({
@@ -97,7 +99,7 @@ class Step4 extends React.Component {
                                         options={program.columns}
                                         value={n.eventDateColumn}
                                         onChange={n.setEventDateColumn(program.columns)}
-                                        styles={customStyles}
+                                        styles={changeStyle(n.eventDateColumn)}
                                     />
                                 </Grid>
                                 <Grid item xs={4}>
@@ -213,11 +215,6 @@ class Step4 extends React.Component {
                                                         </Table>
                                                         <List>
                                                             <ListItem button onClick={() => s.handleClose()}>
-                                                                {/*<ListItemAvatar>
-                                                                    <Avatar>
-                                                                        <AddIcon/>
-                                                                    </Avatar>
-                                                                </ListItemAvatar>*/}
                                                                 <ListItemText primary="Close" />
                                                             </ListItem>
                                                         </List>
@@ -241,7 +238,7 @@ class Step4 extends React.Component {
                                                         value={s.column}
                                                         options={program.columns}
                                                         onChange={s.setColumn}
-                                                        styles={customStyles}
+                                                        styles={changeStyle(s.column)}
                                                     />
                                                 </TableCell>
                                                 <TableCell>

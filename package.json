@@ -30,9 +30,11 @@
     "react-scripts": "3.0.1",
     "react-select": "^3.0.4",
     "shortid": "^2.2.14",
+    "source-map-explorer": "^2.1.0",
     "xlsx": "^0.14.0"
   },
   "scripts": {
+    "analyze": "source-map-explorer 'build/static/js/*.js'",
     "start": "react-app-rewired start",
     "build": "react-app-rewired build && cd build && zip -r -D data-import-wizard.zip .",
     "test": "react-app-rewired test",

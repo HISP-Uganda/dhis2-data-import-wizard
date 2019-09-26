@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import XLSX from 'xlsx';
 import { processDataSet, processProgramData, processEvents } from '../utils/utils'
 

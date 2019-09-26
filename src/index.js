@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
+import Loading from './components/Loading';
 import * as serviceWorker from './serviceWorker';
 import IntegrationStore from './stores/IntegrationStore'
 import { init } from 'd2';
@@ -26,8 +27,12 @@ if (process.env.NODE_ENV === 'development') {
     baseUrl = window.location.protocol + '//' + window.location.host + baseUrl;
     config.baseUrl = baseUrl + 'api'
 }
+
+
+
+
+ReactDOM.render(<Loading />, document.getElementById('root'));
 init(config).then(d2 => {
-    window.d2 = d2;
     ReactDOM.render(<Provider IntegrationStore={IntegrationStore}><App d2={d2} /></Provider>, document.getElementById('root'));
     serviceWorker.unregister();
 }).catch(e => console.error);
