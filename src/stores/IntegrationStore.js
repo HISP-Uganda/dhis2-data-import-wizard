@@ -198,12 +198,19 @@ class IntegrationStore {
 
     upload = args => {
         this.setProgram(args);
-        this.setUpload(true);
+        this.program.setIsUploadingFromPage(true)
+
+        if (this.program.templateType.value === '1') {
+            this.setUpload(true);
+        } else if (this.program.templateType.value === '2') {
+            this.setImportData(true);
+        }
     };
 
     uploadAgg = args => {
         this.setDataSet(args);
         this.setUpload(true);
+        this.dataSet.setIsUploadingFromPage(true)
     };
 
     delete = args => {
@@ -314,10 +321,6 @@ class IntegrationStore {
         } else {
             this.changeSet(this.activeStep + 1);
         }
-        // if (this.activeStep === 8) {
-
-        //     this.changeSet(0)
-        // }
     };
 
     @action
@@ -420,6 +423,12 @@ class IntegrationStore {
     @action closeUploadDialog = () => {
         this.setUpload(false);
         this.setImportData(false);
+        if (!_.isEmpty(this.dataSet)) {
+            this.dataSet.setIsUploadingFromPage(false);
+        }
+        if (!_.isEmpty(this.program)) {
+            this.program.setIsUploadingFromPage(false);
+        }
     };
 
     @action closeScheduledDialog = () => {
@@ -605,7 +614,7 @@ class IntegrationStore {
             value: this.paging.step1.rowsPerPage
         }, {
             param: 'fields',
-            value: 'id,name,displayName,lastUpdated,programType,trackedEntityType,trackedEntity,programTrackedEntityAttributes[mandatory,valueType,trackedEntityAttribute[id,code,name,displayName,unique,optionSet[options[name,code]]]],programStages[id,name,displayName,repeatable,programStageDataElements[compulsory,dataElement[id,code,valueType,name,displayName,optionSet[options[name,code]]]]],organisationUnits[id,code,name]'
+            value: 'id,name,displayName,lastUpdated,programType,trackedEntityType,trackedEntity,programTrackedEntityAttributes[mandatory,valueType,trackedEntityAttribute[id,code,name,displayName,unique,optionSet[options[name,code]]]],programStages[id,name,displayName,repeatable,programStageDataElements[compulsory,dataElement[id,code,valueType,name,displayName,optionSet[options[name,code]]]]],organisationUnits[id,code,name],categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]]'
         }, {
             param: 'order',
             value: 'name:asc'
@@ -1206,8 +1215,7 @@ class IntegrationStore {
     }
 
     @observable tableActions = {
-        download: this.import,
-        upload: this.upload,
+        import: this.upload,
         template: this.downloadData,
         delete: this.delete,
         // schedule: this.schedule
@@ -1221,7 +1229,7 @@ class IntegrationStore {
     };
 
     @observable tableAggActions = {
-        upload: this.uploadAgg,
+        import: this.uploadAgg,
         // download: this.importAgg,
         template: this.downloadData,
         delete: this.deleteAgg
@@ -1234,6 +1242,14 @@ class IntegrationStore {
 
     @computed get currentMessage() {
         return this.program.message || this.dataSet.message;
+    }
+
+    @computed get isProgram() {
+        return !_.isEmpty(this.program);
+    }
+
+    @computed get isDataSet() {
+        return !_.isEmpty(this.dataSet);
     }
 }
 

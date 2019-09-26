@@ -14,7 +14,7 @@ import XLSX from 'xlsx';
 
 import axios from 'axios';
 import {
-    encodeData, groupEntities, isTracker, processEvents, processProgramData, programUniqueAttribute, programUniqueColumn
+    encodeData, groupEntities, isTracker, programUniqueAttribute, programUniqueColumn
 } from "../utils/utils";
 import Param from "./Param";
 import OrganisationUnit from "./OrganisationUnit";
@@ -29,6 +29,7 @@ class Program {
     @observable programType;
     @observable displayName;
     @observable programStages = [];
+    @observable categoryCombo;
     @observable programTrackedEntityAttributes = [];
     @observable trackedEntityType;
     @observable trackedEntity;
@@ -151,7 +152,7 @@ class Program {
     @observable incidentDateProvided = false;
     @observable processed;
     @observable data;
-
+    @observable isUploadingFromPage;
 
     constructor(lastUpdated, name, id, programType, displayName, programStages, programTrackedEntityAttributes) {
         this.lastUpdated = lastUpdated;
@@ -323,7 +324,7 @@ class Program {
     onDrop = async (accepted, rejected) => {
         if (accepted.length > 0) {
             this.openDialog();
-            this.uploadMessage = '';
+            this.message = 'Uploading';
             const f = accepted[0];
             this.setFileName(f.name);
             const workbook = await instance.expensive(accepted);
@@ -451,15 +452,22 @@ class Program {
     @action setLongitudeColumn = val => this.longitudeColumn = val;
     @action setLatitudeColumn = val => this.latitudeColumn = val;
     @action setMessage = val => this.message = val;
+    @action setIsUploadingFromPage = val => this.isUploadingFromPage = val;
+    @action setCategoryCombo = val => this.categoryCombo = val;
     @action setSelectedSheet = async val => {
         this.selectedSheet = val;
         if (val) {
+            this.setProcessed(null);
             const data = XLSX.utils.sheet_to_json(this.workbook.Sheets[val.value], {
                 range: this.headerRow - 1,
                 dateNF: 'YYYY-MM-DD'
             });
             this.setData(data);
             this.computeUnits();
+
+            if (this.isUploadingFromPage) {
+                this.process();
+            }
         }
     };
     @action setWorkbook = val => this.workbook = val;
@@ -895,8 +903,9 @@ class Program {
         if (this.isTracker) {
             this.setMessage("Fetching previous tracked entity instances");
             const searchedInstances = await this.searchTrackedEntities();
+            const groupedEntities = groupEntities(this.uniqueAttribute, searchedInstances)
             this.setMessage("Processing selected tracker program...")
-            dataResponse = await instance.processTrackerProgramData(data, program, uniqueColumn, searchedInstances);
+            dataResponse = await instance.processTrackerProgramData(data, program, uniqueColumn, groupedEntities);
         } else {
             const programStage = this.programStages[0];
             this.setMessage("Fetching previous events by date");
@@ -983,7 +992,8 @@ class Program {
                 'mappingDescription',
                 'sourceOrganisationUnits',
                 'templateType',
-                'incidentDateProvided'
+                'incidentDateProvided',
+                'categoryCombo'
             ])
     }
 
@@ -1189,17 +1199,20 @@ class Program {
     }
 
     @computed get currentNewInstances() {
-        const {
-            newTrackedEntityInstances
-        } = this.processed;
+        if (this.processed) {
+            const {
+                newTrackedEntityInstances
+            } = this.processed;
 
-        return newTrackedEntityInstances.map(tei => {
-            const attributes = tei.attributes.map(a => {
-                return { ...a, name: this.processedAttributes[a.attribute] };
-            });
+            return newTrackedEntityInstances.map(tei => {
+                const attributes = tei.attributes.map(a => {
+                    return { ...a, name: this.processedAttributes[a.attribute] };
+                });
 
-            return { ...tei, attributes, orgUnit: this.allOrganisationUnits[tei.orgUnit] }
-        })
+                return { ...tei, attributes, orgUnit: this.allOrganisationUnits[tei.orgUnit] }
+            })
+        }
+        return [];
     }
 
     @computed get allStages() {
@@ -1207,65 +1220,77 @@ class Program {
     }
 
     @computed get currentNewEnrollments() {
-        const {
-            newEnrollments
-        } = this.processed;
+        if (this.processed) {
+            const {
+                newEnrollments
+            } = this.processed;
 
-        return newEnrollments.map(e => {
-            return { ...e, orgUnit: this.allOrganisationUnits[e.orgUnit] }
-        })
+            return newEnrollments.map(e => {
+                return { ...e, orgUnit: this.allOrganisationUnits[e.orgUnit] }
+            })
+        }
+        return []
     }
 
     @computed get currentNewEvents() {
-        const {
-            newEvents
-        } = this.processed;
+        if (this.processed) {
+            const {
+                newEvents
+            } = this.processed;
 
-        return newEvents.map(event => {
-            const dataValues = event.dataValues.map(e => {
-                return { ...e, name: this.processedDataElements[e.dataElement] };
+            return newEvents.map(event => {
+                const dataValues = event.dataValues.map(e => {
+                    return { ...e, name: this.processedDataElements[e.dataElement] };
+                });
+
+                return {
+                    ...event,
+                    dataValues,
+                    orgUnit: this.allOrganisationUnits[event.orgUnit],
+                    programStage: this.allStages[event.programStage]
+                }
             });
-
-            return {
-                ...event,
-                dataValues,
-                orgUnit: this.allOrganisationUnits[event.orgUnit],
-                programStage: this.allStages[event.programStage]
-            }
-        });
+        }
+        return []
     }
 
     @computed get currentInstanceUpdates() {
-        const {
-            trackedEntityInstancesUpdate
-        } = this.processed;
+        if (this.processed) {
+            const {
+                trackedEntityInstancesUpdate
+            } = this.processed;
 
-        return trackedEntityInstancesUpdate.map(tei => {
-            const attributes = tei.attributes.map(a => {
-                return { ...a, name: this.processedAttributes[a.attribute] };
+            return trackedEntityInstancesUpdate.map(tei => {
+                const attributes = tei.attributes.map(a => {
+                    return { ...a, name: this.processedAttributes[a.attribute] };
+                });
+
+                return { ...tei, attributes, orgUnit: this.allOrganisationUnits[tei.orgUnit] }
             });
-
-            return { ...tei, attributes, orgUnit: this.allOrganisationUnits[tei.orgUnit] }
-        });
+        }
+        return []
     }
 
     @computed get currentEventUpdates() {
-        const {
-            eventsUpdate
-        } = this.processed;
+        if (this.processed) {
+            const {
+                eventsUpdate
+            } = this.processed;
 
-        return eventsUpdate.map(event => {
-            const dataValues = event.dataValues.map(e => {
-                return { ...e, name: this.processedDataElements[e.dataElement] };
+            return eventsUpdate.map(event => {
+                const dataValues = event.dataValues.map(e => {
+                    return { ...e, name: this.processedDataElements[e.dataElement] };
+                });
+
+                return {
+                    ...event,
+                    dataValues,
+                    orgUnit: this.allOrganisationUnits[event.orgUnit],
+                    programStage: this.allStages[event.programStage]
+                }
             });
-
-            return {
-                ...event,
-                dataValues,
-                orgUnit: this.allOrganisationUnits[event.orgUnit],
-                programStage: this.allStages[event.programStage]
-            }
-        });
+        }
+        return [];
     }
 
     @computed get currentErrors() {
@@ -1308,19 +1333,23 @@ class Program {
     }
 
     @computed get totalImports() {
-        const {
-            newTrackedEntityInstances,
-            newEnrollments,
-            newEvents,
-            trackedEntityInstancesUpdate,
-            eventsUpdate
-        } = this.processed;
+        if (this.processed && !_.isEmpty(this.processed)) {
+            const {
+                newTrackedEntityInstances,
+                newEnrollments,
+                newEvents,
+                trackedEntityInstancesUpdate,
+                eventsUpdate
+            } = this.processed;
 
-        if (this.isTracker) {
-            return newTrackedEntityInstances.length + newEnrollments.length + newEvents.length + trackedEntityInstancesUpdate.length + eventsUpdate.length;
-        } else {
-            return newEvents.length + eventsUpdate.length
+            if (this.isTracker) {
+                return newTrackedEntityInstances.length + newEnrollments.length + newEvents.length + trackedEntityInstancesUpdate.length + eventsUpdate.length;
+            } else {
+                return newEvents.length + eventsUpdate.length
+            }
         }
+        return 0;
+
     }
 
     @computed get eventsByDataElement() {
@@ -1334,7 +1363,50 @@ class Program {
         return data
     }
 
+    @computed get processedSummary() {
+        if (this.processed) {
+            const {
+                newTrackedEntityInstances,
+                newEnrollments,
+                newEvents,
+                trackedEntityInstancesUpdate,
+                eventsUpdate,
+                conflicts,
+                duplicates,
+                errors
+            } = this.processed;
 
+            return {
+                newTrackedEntityInstances,
+                newEnrollments,
+                newEvents,
+                trackedEntityInstancesUpdate,
+                eventsUpdate,
+                conflicts,
+                duplicates,
+                errors
+            }
+        }
+        return {
+            newTrackedEntityInstances: [],
+            newEnrollments: [],
+            newEvents: [],
+            trackedEntityInstancesUpdate: [],
+            eventsUpdate: [],
+            conflicts: [],
+            duplicates: [],
+            errors: []
+        }
+    }
+
+    @computed get categories() {
+        if (this.categoryCombo) {
+            return this.categoryCombo.categories.map(category => {
+                return { label: category.name, value: category.id }
+            })
+        }
+        return [];
+    }
 }
 
 export default Program;

@@ -1,18 +1,16 @@
-import {inject, observer} from 'mobx-react';
+import { inject, observer } from 'mobx-react';
 import React from 'react';
-import {withStyles} from '@material-ui/core/styles';
-import {PeriodPicker} from "@dhis2/d2-ui-core";
+import { withStyles } from '@material-ui/core/styles';
+import { PeriodPicker } from "@dhis2/d2-ui-core";
 import Select from 'react-select';
 import Checkbox from "@material-ui/core/Checkbox";
 import TextField from '@material-ui/core/TextField';
-import Progress from "../progress";
-
-import {createParam} from '../../stores/converters'
+import { createParam } from '../../stores/converters'
 import Grid from "@material-ui/core/Grid";
 import Dropzone from "react-dropzone";
-import Icon from "@material-ui/core/Icon";
 import Params from "./Params";
-import {CloudUpload} from "@material-ui/icons";
+import { CloudUpload } from "@material-ui/icons";
+import customStyles from '../customStyles'
 
 const styles = theme => ({
     block: {
@@ -48,35 +46,32 @@ class D20 extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
-
     upload = () => {
         return <Grid container spacing={8}>
-            <Grid item xs={6}>
+            <Grid item xs={12}>
                 <Dropzone activeStyle={{}}
-                          accept=".csv, .xls, .xlsx"
-                          onDrop={this.integrationStore.dataSet.onDrop}>
-                    {({getRootProps, getInputProps}) => (
+                    accept=".csv, .xls, .xlsx"
+                    onDrop={this.integrationStore.dataSet.onDrop}>
+                    {({ getRootProps, getInputProps }) => (
                         <section>
                             <div {...getRootProps()}>
-                                <input {...getInputProps()}     />
-                                <br/>
+                                <input {...getInputProps()} />
+                                <br />
                                 <p align="center">Drop files here</p>
                                 <p align="center">
-                                    <CloudUpload fontSize="large"/>
+                                    <CloudUpload fontSize="large" />
                                 </p>
                                 <p align="center">{this.integrationStore.dataSet.fileName}</p>
-                                <p align="center" style={{color: 'red'}}>{this.integrationStore.dataSet.uploadMessage}</p>
+                                <p align="center" style={{ color: 'red' }}>{this.integrationStore.dataSet.uploadMessage}</p>
                             </div>
                         </section>
                     )}
                 </Dropzone>
-            </Grid>
-
-            <Grid item xs={6}>
+                <br />
                 <Select
                     placeholder="Select sheet"
                     value={this.integrationStore.dataSet.selectedSheet}
@@ -84,8 +79,9 @@ class D20 extends React.Component {
                     onChange={this.integrationStore.dataSet.setSelectedSheet}
                     isClearable
                     isSearchable
+                    styles={customStyles}
                 />
-                <br/>
+                <br />
                 {!this.integrationStore.dataSet.organisationUnitInExcel && this.integrationStore.dataSet.templateType.value === '3' ?
                     <Select
                         placeholder="Select organisation unit"
@@ -94,12 +90,13 @@ class D20 extends React.Component {
                         onChange={this.integrationStore.dataSet.setOrganisation}
                         isClearable
                         isSearchable
+                        styles={customStyles}
                     /> : null}
                 {this.integrationStore.dataSet.templateType.value === '3' && this.integrationStore.dataSet.categoryCombo.categories.length ?
                     <Grid container spacing={8}>
                         {this.integrationStore.dataSet.categoryCombo.categories.map(category => {
                             return <Grid key={category.id} item
-                                         xs={12 / this.integrationStore.dataSet.categoryCombo.categories.length}>
+                                xs={12 / this.integrationStore.dataSet.categoryCombo.categories.length}>
 
                                 <Select
                                     placeholder={category.name + ' column'}
@@ -108,6 +105,7 @@ class D20 extends React.Component {
                                     onChange={category.setMapping}
                                     isClearable
                                     isSearchable
+                                    styles={customStyles}
                                 />
                             </Grid>
                         })}
@@ -127,8 +125,8 @@ class D20 extends React.Component {
         return <Grid container spacing={8}>
             <Grid item xs={12}>
                 <Checkbox checked={this.integrationStore.dataSet.multiplePeriods}
-                          onChange={this.integrationStore.dataSet.onCheckMultiplePeriods}
-                          value="checked"/> Multiple Periods
+                    onChange={this.integrationStore.dataSet.onCheckMultiplePeriods}
+                    value="checked" /> Multiple Periods
 
                 {this.integrationStore.dataSet.multiplePeriods ? <div>
                     <Grid container spacing={8}>
@@ -158,16 +156,16 @@ class D20 extends React.Component {
                             />
                         </Grid>
                     </Grid>
-                    <br/>
+                    <br />
                 </div> : <div>
-                    <PeriodPicker
-                        periodType={this.integrationStore.dataSet.periodType}
-                        onPickPeriod={(value) => this.integrationStore.dataSet.replaceParamByValue(createParam({
-                            param: 'dimension',
-                            value: `pe:${value}`
-                        }), 'pe:')}
-                    />
-                </div>}
+                        <PeriodPicker
+                            periodType={this.integrationStore.dataSet.periodType}
+                            onPickPeriod={(value) => this.integrationStore.dataSet.replaceParamByValue(createParam({
+                                param: 'dimension',
+                                value: `pe:${value}`
+                            }), 'pe:')}
+                        />
+                    </div>}
             </Grid>
         </Grid>
     };
@@ -178,7 +176,7 @@ class D20 extends React.Component {
             case '5':
                 return this.dhis2();
             case '6':
-                return <Params/>;
+                return <Params />;
             default:
                 return this.upload();
         }
@@ -188,8 +186,8 @@ class D20 extends React.Component {
         return (
             <div>
                 {this.step2Form()}
-                <Progress open={this.integrationStore.dataSet.dialogOpen}
-                          onClose={this.integrationStore.dataSet.closeDialog}/>
+                {/* <Progress open={this.integrationStore.dataSet.dialogOpen}
+                    onClose={this.integrationStore.dataSet.closeDialog} /> */}
             </div>
         );
     }

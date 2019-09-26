@@ -11,11 +11,13 @@ import { InputField } from "@dhis2/d2-ui-core";
 import Summary from "./Summary";
 import { Delete, ArrowDownward, ArrowUpward, CloudDownload, CloudUpload } from "@material-ui/icons";
 import Params from "./Params";
+import LinearProgress from '@material-ui/core/LinearProgress';
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Select from 'react-select';
 import Progress from "../progress";
 import { DialogActions, DialogContent, DialogTitle } from "../Fragments";
 import EventSummary from "./EventSummary";
+import customStyles from "../customStyles";
 import { changeStyle } from "../../utils/data-utils";
 
 
@@ -49,6 +51,7 @@ class Step0 extends React.Component {
 
     render() {
         return <div>
+            {this.integrationStore.program.pulling ? <LinearProgress color="secondary" /> : ''}
             {this.integrationStore.mappings.length > 0 ?
                 <Table
                     columns={['mappingId', 'mappingName', 'mappingDescription']}
@@ -57,7 +60,8 @@ class Step0 extends React.Component {
                     contextMenuIcons={
                         {
                             delete: <Delete />,
-                            import: <ArrowDownward />,
+                            upload: <ArrowUpward />,
+                            download: <ArrowDownward />,
                             template: <CloudDownload />
                         }
                     }
@@ -113,6 +117,7 @@ class Step0 extends React.Component {
                                 </div>
                             </section>
                         )}
+
                     </Dropzone>
 
                     {this.integrationStore.program.fetchingEntities === 1 && this.integrationStore.program.isTracker ?

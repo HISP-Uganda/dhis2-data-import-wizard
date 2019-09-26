@@ -1,11 +1,11 @@
 import React from 'react';
-import {withStyles} from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/core/styles';
 import Select from 'react-select';
 import FormHelperText from "@material-ui/core/FormHelperText";
 
 import red from '@material-ui/core/colors/red';
-import {inject, observer} from "mobx-react";
-import {InputField} from "@dhis2/d2-ui-core";
+import { inject, observer } from "mobx-react";
+import { InputField } from "@dhis2/d2-ui-core";
 import FormGroup from '@material-ui/core/FormGroup';
 import Grid from "@material-ui/core/Grid";
 import Progress from "../progress";
@@ -17,9 +17,9 @@ import TableBody from "@material-ui/core/TableBody";
 import TableHead from "@material-ui/core/TableHead";
 import TablePagination from "@material-ui/core/TablePagination";
 import FormControlLabel from '@material-ui/core/FormControlLabel';
-import customStyles from "../customStyles";
-import {GreenCheckbox} from "../common";
-import {Clear, Done} from "@material-ui/icons";
+import { GreenCheckbox } from "../common";
+import { Clear, Done } from "@material-ui/icons";
+import { changeStyle } from "../../utils/data-utils";
 
 const styles = theme => ({
     root: {
@@ -45,7 +45,7 @@ class Step2 extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -54,6 +54,31 @@ class Step2 extends React.Component {
             this.integrationStore.program.pullData();
         }
     }
+
+    attribution = () => {
+
+        if (this.integrationStore.program.categories.length > 0) {
+            return <Grid container spacing={8}>
+                {this.integrationStore.program.categoryCombo.categories.map(category => {
+                    return <Grid key={category.id} item
+                        xs={12 / this.integrationStore.program.categoryCombo.categories.length}>
+                        <span style={{ fontWeight: 'bold' }}>{category.name + ' column'}</span>
+                        <Select
+                            placeholder={category.name + ' column'}
+                            isClearable
+                            isSearchable
+                            value={category.mapping}
+                            options={this.integrationStore.program.columns}
+                            onChange={category.setMapping}
+                            styles={changeStyle(category.mapping)}
+                        />
+                    </Grid>
+                })}
+            </Grid>
+        }
+        return null;
+    };
+
 
 
     organisationUnitMapping = () => {
@@ -67,7 +92,7 @@ class Step2 extends React.Component {
                         <TableCell>
                             Destination Organisation Units
                         </TableCell>
-                        <TableCell style={{width: 40}}>Mapped?</TableCell>
+                        <TableCell style={{ width: 40 }}>Mapped?</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -81,16 +106,16 @@ class Step2 extends React.Component {
                                 placeholder="Aggregation Level"
                                 value={u.mapping}
                                 options={this.integrationStore.program.organisationUnits.map(ui => {
-                                    return {label: ui.name, value: ui.id}
+                                    return { label: ui.name, value: ui.id }
                                 })}
                                 onChange={u.setMapping}
                                 isClearable
                                 isSearchable
-                                styles={customStyles}
+                                styles={changeStyle(u.mapping)}
                             />
                         </TableCell>
                         <TableCell>
-                            {u.mapping ? <Done/> : <Clear/>}
+                            {u.mapping ? <Done /> : <Clear />}
                         </TableCell>
                     </TableRow>)}
 
@@ -119,7 +144,7 @@ class Step2 extends React.Component {
             {this.integrationStore.program.templateType.value === '1' ? <div>
                 <Grid container spacing={8}>
                     <Grid item xs={12}>
-                        <span style={{fontWeight: 'bold'}}>Select sheet</span>
+                        <span style={{ fontWeight: 'bold' }}>Select sheet</span>
                         <Select
                             placeholder="Select sheet"
                             isClearable
@@ -127,7 +152,7 @@ class Step2 extends React.Component {
                             value={this.integrationStore.program.selectedSheet}
                             options={this.integrationStore.program.sheets}
                             onChange={this.integrationStore.program.setSelectedSheet}
-                            styles={customStyles}
+                            styles={changeStyle(this.integrationStore.program.selectedSheet)}
                         />
                     </Grid>
                 </Grid>
@@ -154,10 +179,10 @@ class Step2 extends React.Component {
                     </Grid>
                 </Grid>
             </div> : null}
-            <br/>
+            <br />
             <Grid container spacing={8}>
                 <Grid item xs={12}>
-                    <span style={{fontWeight: 'bold'}}>Select organisation unit column</span>
+                    <span style={{ fontWeight: 'bold' }}>Select organisation unit column</span>
                     <Select
                         placeholder="Organisation unit column"
                         isClearable
@@ -165,16 +190,18 @@ class Step2 extends React.Component {
                         value={this.integrationStore.program.orgUnitColumn}
                         options={this.integrationStore.program.columns}
                         onChange={this.integrationStore.program.handleOrgUnitSelectChange}
-                        styles={customStyles}
+                        styles={changeStyle(this.integrationStore.program.orgUnitColumn)}
                     />
                     <FormHelperText>For new tracked entities and events, this column will be
                         used as organisation unit</FormHelperText>
                 </Grid>
             </Grid>
-            <br/>
-            <span style={{fontWeight: 'bold'}}>Organisation unit mapping</span>
+            <br />
+            <span style={{ fontWeight: 'bold' }}>Organisation unit mapping</span>
             {this.organisationUnitMapping()}
-            <br/>
+            <br />
+            {this.attribution()}
+            <br />
             {this.integrationStore.program.isTracker ? <Grid container spacing={8}>
                 <Grid item xs={12}>
                     <Grid container spacing={8}>
@@ -227,7 +254,7 @@ class Step2 extends React.Component {
                         <Grid item xs={12}>
                             <Grid container spacing={8}>
                                 <Grid item xs={this.integrationStore.program.incidentDateProvided ? 6 : 12}>
-                                    <span style={{fontWeight: 'bold'}}>Select enrollment date column</span>
+                                    <span style={{ fontWeight: 'bold' }}>Select enrollment date column</span>
                                     <Select
                                         placeholder="Enrollment date column"
                                         isClearable
@@ -236,13 +263,13 @@ class Step2 extends React.Component {
                                         disabled={!this.integrationStore.program.createNewEnrollments}
                                         options={this.integrationStore.program.columns}
                                         onChange={this.integrationStore.program.handleEnrollmentDateColumnSelectChange}
-                                        styles={customStyles}
+                                        styles={changeStyle(this.integrationStore.program.enrollmentDateColumn)}
                                     />
-                                    <FormHelperText>Should be a valid date<br/>&nbsp;</FormHelperText>
+                                    <FormHelperText>Should be a valid date<br />&nbsp;</FormHelperText>
                                 </Grid>
 
                                 {this.integrationStore.program.incidentDateProvided ? <Grid item xs={6}>
-                                    <span style={{fontWeight: 'bold'}}>Select incident date column</span>
+                                    <span style={{ fontWeight: 'bold' }}>Select incident date column</span>
                                     <Select
                                         placeholder="Incident date column"
                                         isClearable
@@ -251,9 +278,9 @@ class Step2 extends React.Component {
                                         disabled={!this.integrationStore.program.createNewEnrollments}
                                         options={this.integrationStore.program.columns}
                                         onChange={this.integrationStore.program.handleIncidentDateColumnSelectChange}
-                                        styles={customStyles}
+                                        styles={changeStyle(this.integrationStore.program.incidentDateColumn)}
                                     />
-                                    <FormHelperText>Should be a valid date<br/>&nbsp;</FormHelperText>
+                                    <FormHelperText>Should be a valid date<br />&nbsp;</FormHelperText>
                                 </Grid> : null}
                             </Grid>
 
@@ -263,9 +290,9 @@ class Step2 extends React.Component {
                 </Grid>
             </Grid> : null}
             <Progress open={this.integrationStore.program.dialogOpen}
-                      onClose={this.integrationStore.program.closeDialog}/>
+                onClose={this.integrationStore.program.closeDialog} />
         </div>
     }
 }
 
-export default withStyles(styles, {withTheme: true})(Step2);
+export default withStyles(styles, { withTheme: true })(Step2);

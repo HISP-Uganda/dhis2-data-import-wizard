@@ -19,50 +19,58 @@ import Program from "./Program";
 import TrackedEntityType from "./TrackedEntityType";
 import Schedule from "./Schedule";
 
+export const makeCategoryCombo = (val) => {
+    if (val.categoryCombo) {
+        const categoryCombo = new CategoryCombo();
+        categoryCombo.setId(val.categoryCombo.id);
+        categoryCombo.setCode(val.categoryCombo.code);
+        categoryCombo.setName(val.categoryCombo.name);
+
+        const categories = val.categoryCombo.categories.filter(c => c.name !== 'default').map(c => {
+            const category = new Category(c.id, c.name, c.code);
+
+            if (c.mapping) {
+                category.setMapping(c.mapping);
+            }
+
+
+            const categoryOptions = c.categoryOptions.map(co => {
+                return new CategoryOption(co.id, co.name, co.code);
+            });
+
+            category.setCategoryOptions(categoryOptions);
+
+            return category
+
+        });
+
+        const dateSetCategoryOptionCombos = val.categoryCombo.categoryOptionCombos.map(coc => {
+            const categoryOptionCombo = new CategoryOptionCombo();
+            categoryOptionCombo.setId(coc.id);
+            categoryOptionCombo.setName(coc.name);
+
+            const categoryOptions = coc.categoryOptions.map(co => {
+                return new CategoryOption(co.id, co.name, co.code);
+            });
+            categoryOptionCombo.setCategoryOptions(categoryOptions);
+            return categoryOptionCombo;
+        });
+
+        categoryCombo.setCategoryOptionCombos(dateSetCategoryOptionCombos);
+        categoryCombo.setCategories(categories);
+
+        return categoryCombo
+    }
+    return null;
+}
+
 export const convertAggregate = (ds, d2) => {
 
     const grouped = _.groupBy(ds.dataValues, 'dataElement');
 
     const dataSet = new DataSet();
 
-    const dateSetCategoryCombo = new CategoryCombo();
-    dateSetCategoryCombo.setId(ds.categoryCombo.id);
-    dateSetCategoryCombo.setCode(ds.categoryCombo.code);
-    dateSetCategoryCombo.setName(ds.categoryCombo.name);
-
-
-    const categories = ds.categoryCombo.categories.filter(c => c.name !== 'default').map(c => {
-        const category = new Category(c.id, c.name, c.code);
-
-        if (c.mapping) {
-            category.setMapping(c.mapping);
-        }
-
-
-        const categoryOptions = c.categoryOptions.map(co => {
-            return new CategoryOption(co.id, co.name, co.code);
-        });
-
-        category.setCategoryOptions(categoryOptions);
-
-        return category
-
-    });
-
-    const dateSetCategoryOptionCombos = ds.categoryCombo.categoryOptionCombos.map(coc => {
-        const categoryOptionCombo = new CategoryOptionCombo();
-        categoryOptionCombo.setId(coc.id);
-        categoryOptionCombo.setName(coc.name);
-
-        const categoryOptions = coc.categoryOptions.map(co => {
-            return new CategoryOption(co.id, co.name, co.code);
-        });
-        categoryOptionCombo.setCategoryOptions(categoryOptions);
-        return categoryOptionCombo;
-    });
-
-    dateSetCategoryCombo.setCategoryOptionCombos(dateSetCategoryOptionCombos);
-    dateSetCategoryCombo.setCategories(categories);
+    const dateSetCategoryCombo = makeCategoryCombo(ds);
 
     dataSet.setCategoryCombo(dateSetCategoryCombo);
 
@@ -191,7 +199,6 @@ export const convertAggregate = (ds, d2) => {
             return o;
         });
         dataSet.setSourceOrganisationUnit(units);
-
     }
 
     return dataSet;
@@ -272,11 +279,9 @@ export const convert = (program, d2) => {
         if (pa.column) {
             programTrackedEntityAttribute.setColumn(pa.column);
         }
-
         return programTrackedEntityAttribute;
-
     });
-
+    const programCategoryCombo = makeCategoryCombo(program);
     const p = new Program(
         program.lastUpdated,
         program.name,
@@ -286,6 +291,8 @@ export const convert = (program, d2) => {
         programStages,
         programTrackedEntityAttributes
     );
+
+    p.setCategoryCombo(programCategoryCombo);
 
     p.setOrganisationUnits(program.organisationUnits);
 

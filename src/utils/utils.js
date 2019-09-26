@@ -11,14 +11,11 @@ export const nest = function (seq, keys) {
     });
 };
 
-export const findAttributeCombo = (dataSet, data, compareId) => {
-    return dataSet.categoryCombo.categoryOptionCombos.find(coc => {
+export const findAttributeCombo = (categoryCombo, data) => {
+    return categoryCombo.categoryOptionCombos.find(coc => {
         const attributeCombo = data.map(v => {
             const match = coc.categoryOptions.find(co => {
-                if (compareId) {
-                    return v !== undefined && co.id === v;
-                }
-                return v !== undefined && co.name === v;
+                return v !== undefined && (co.id === v || co.name === v);
             });
             return !!match;
         });
@@ -160,7 +157,7 @@ export const processDataSet = (data, dataSet) => {
                                 return mapping && mapping.value && v.categoryOptionCombo === mapping.value.toLowerCase() && v.dataElement === dataElement;
                             });
                             filtered.forEach(d => {
-                                const attribute = findAttributeCombo(dataSet, d.attributeValue, false);
+                                const attribute = findAttributeCombo(categoryCombo, d.attributeValue);
                                 if (d['orgUnit'] && attribute) {
                                     const orgUnit = searchSourceOrgUnits(d['orgUnit'], sourceOrganisationUnits);
                                     if (orgUnit && orgUnit.mapping) {
@@ -224,13 +221,13 @@ export const processDataSet = (data, dataSet) => {
                                     const value = data[category.mapping.value];
                                     return value ? value.v : undefined;
                                 });
-                                found = findAttributeCombo(dataSet, rowData, false);
+                                found = findAttributeCombo(categoryCombo, rowData);
 
                             } else {
                                 const rowData = categoryCombo.categories.map(category => {
                                     return category.mapping.value;
                                 });
-                                found = findAttributeCombo(dataSet, rowData, true);
+                                found = findAttributeCombo(categoryCombo, rowData);
                             }
                             if (found) {
                                 dataValues = [...dataValues, {
@@ -257,7 +254,7 @@ export const processDataSet = (data, dataSet) => {
                                 return mapping && mapping.value && v.dx === mapping.value;
                             });
                             filtered.forEach(d => {
-                                const attribute = findAttributeCombo(dataSet, [], false);
+                                const attribute = findAttributeCombo(categoryCombo, []);
                                 if (attribute) {
                                     const orgUnit = units[d['ou']];
                                     if (orgUnit) {
@@ -292,7 +289,7 @@ export const processDataSet = (data, dataSet) => {
                 const optionValue = data[optionCell];
                 return optionValue ? optionValue.v : undefined;
             });
-            const found = findAttributeCombo(dataSet, rowData, false);
+            const found = findAttributeCombo(categoryCombo, rowData);
             if (found) {
                 _.forOwn(cell2, v => {
                     const oCell = orgUnitColumn.value + i;
@@ -676,13 +673,15 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
         orgUnitStrategy,
         orgUnitColumn,
         sourceOrganisationUnits,
-        incidentDateProvided
+        incidentDateProvided,
+        categoryCombo
     } = program;
 
     if (uniqueColumn) {
         data = data.filter(d => {
             return d[uniqueColumn] !== null && d[uniqueColumn] !== undefined;
         });
+        console.log(instances);
         let clients = _.groupBy(data, uniqueColumn);
         let newClients = [];
         _.forOwn(clients, (data, client) => {
@@ -768,6 +767,12 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                             }
                         });
 
+                        const rowData = categoryCombo.categories.map(category => {
+                            return d[category.mapping.value]
+                        });
+                        const found = findAttributeCombo(categoryCombo, rowData);
+
+
                         let event = {
                             dataValues,
                             eventDate,
@@ -792,6 +797,11 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                                 }
                             }
                         }
+
+                        if (found) {
+                            event = { ...event, attributeOptionCombo: found.id }
+                        }
+
 
                         events = [...events, event];
                     }
@@ -853,6 +863,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                 }
             });
             let groupedEvents = _.groupBy(events, 'programStage');
+            console.log(client.previous);
             if (client.previous.length > 1) {
                 duplicates = [...duplicates, { identifier: client.client }]
             } else if (client.previous.length === 1) {
@@ -1179,7 +1190,8 @@ export const processEvents = (program, data, uniqueDatesData, uniqueDataElementD
         dataSource,
         orgUnitColumn,
         orgUnitStrategy,
-        sourceOrganisationUnits
+        sourceOrganisationUnits,
+        categoryCombo
     } = program;
 
     const stage = programStages[0];
@@ -1250,6 +1262,11 @@ export const processEvents = (program, data, uniqueDatesData, uniqueDataElementD
                 }]
             }
 
+            const rowData = categoryCombo.categories.map(category => {
+                return d[category.mapping.value]
+            });
+            const found = findAttributeCombo(categoryCombo, rowData);
+
             let event = {
                 dataValues,
                 eventDate,
@@ -1258,6 +1275,10 @@ export const processEvents = (program, data, uniqueDatesData, uniqueDataElementD
                 program: id,
                 event: generateUid()
             };
+
+            if (found) {
+                event = { ...event, attributeOptionCombo: found.id }
+            }
 
             if (coordinate) {
                 event = {
