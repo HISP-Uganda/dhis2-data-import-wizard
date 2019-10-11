@@ -6,6 +6,7 @@ import { convert, convertAggregate, convertSchedules } from './converters'
 import { NotificationManager } from "react-notifications";
 import Schedule from "./Schedule";
 import { convertDataToURL } from "../utils/utils";
+import Organisation from './Organisation';
 
 configure({
     enforceActions: "observed"
@@ -46,6 +47,7 @@ class IntegrationStore {
     @observable aggregates = [];
 
     @observable schedulerEnabled = true;
+    @observable organisation = new Organisation();
 
     @observable isFull = true;
     @observable dialogOpen = false;
@@ -252,8 +254,6 @@ class IntegrationStore {
             default:
                 console.log('Nothing to do');
         }
-
-
     };
 
     @action downloadProgramData = () => {
@@ -537,7 +537,7 @@ class IntegrationStore {
                 this.dataSet.setAggregateId(1);
             }
             await this.handleNextAggregate();
-            this.openDialog();
+            this.closeDialog();
         } catch (e) {
             this.closeDialog();
             NotificationManager.error(`${e.message} could not fetch data value sets`, 'Error', 5000);
@@ -643,7 +643,6 @@ class IntegrationStore {
             this.closeDialog();
         } catch (e) {
             NotificationManager.error(`${e.message} could not fetch programs`, 'Error', 5000);
-            console.log(e);
             this.closeDialog();
         }
     };
@@ -1084,7 +1083,6 @@ class IntegrationStore {
                     || (this.dataSet.multiplePeriods && (!this.dataSet.startPeriod || !this.dataSet.endPeriod))
                     || (!this.dataSet.multiplePeriods && !this.dataSet.periodExists)
             } else if (this.dataSet.templateType.value === '5') {
-                console.log((!this.dataSet.periodExists2 || !(this.dataSet.multiplePeriods && this.dataSet.startPeriod && this.dataSet.endPeriod)));
                 return !this.dataSet
                     || !this.dataSet.currentLevel
                     || !(this.dataSet.periodExists2 || (this.dataSet.multiplePeriods && this.dataSet.startPeriod && this.dataSet.endPeriod))

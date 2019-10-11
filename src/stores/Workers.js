@@ -11,14 +11,20 @@ export function expensive(files) {
         buffers.push(reader.readAsArrayBuffer(file));
     });
 
+    // const f = files[0];
+    // const extension = f.name.split('.').pop();
+    // const others = extension === 'csv' ? { raw: true } : {
+    //     cellDates: true,
+    //     cellNF: false,
+    //     cellText: false
+    // };
+
 
     const data = buffers[0];
 
     return XLSX.read(data, {
         type: 'array',
-        cellDates: true,
-        cellNF: false,
-        cellText: false
+        raw: true
     });
 }
 
@@ -35,6 +41,6 @@ export function processTrackerProgramData(data, program, uniqueColumn, instances
     return processProgramData(data, program, uniqueColumn, instances)
 }
 
-export function processEventProgramData(data, program, uniqueColumn, instances) {
-    return processEvents(data, program, uniqueColumn, instances)
+export function processEventProgramData(data, program, instances) {
+    return processEvents(data, program, instances)
 }

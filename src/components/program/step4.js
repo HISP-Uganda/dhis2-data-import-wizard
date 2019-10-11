@@ -12,7 +12,6 @@ import ExpansionPanel from '@material-ui/core/ExpansionPanel';
 import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
 import Typography from '@material-ui/core/Typography';
-import LinearProgress from '@material-ui/core/LinearProgress';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import FormHelperText from "@material-ui/core/FormHelperText";
 import { InputField } from '@dhis2/d2-ui-core';
@@ -55,11 +54,14 @@ class Step4 extends React.Component {
         this.integrationStore = IntegrationStore;
     }
 
+    componentDidMount() {
+        this.integrationStore.setExpanded(this.integrationStore.program.programStages[0].id)
+    }
+
     render() {
         const { classes } = this.props;
         const { program } = this.integrationStore;
         return <div>
-            {program.fetchingEntities === 1 && program.isTracker ? <LinearProgress /> : ''}
             {program.programStages.map(n => {
                 return (
                     <ExpansionPanel key={n.id} expanded={this.integrationStore.expanded === n.id}
@@ -243,7 +245,7 @@ class Step4 extends React.Component {
                                                 </TableCell>
                                                 <TableCell>
                                                     <GreenCheckbox checked={s.dataElement.identifiesEvent}
-                                                        onChange={n.makeElementAsIdentifier(s, program)} />
+                                                        onChange={n.makeElementAsIdentifier(s)} />
                                                 </TableCell>
 
                                                 <TableCell>

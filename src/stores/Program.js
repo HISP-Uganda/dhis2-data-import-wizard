@@ -505,47 +505,29 @@ class Program {
 
     searchTrackedEntities = async () => {
         const api = this.d2.Api.getApi();
+
+        let foundEntities = [];
         try {
             if (this.uniqueIds.length > 0) {
-                const all = this.uniqueIds.map(uniqueId => {
-                    return api.get('trackedEntityInstances', {
-                        ouMode: 'ALL',
-                        filter: this.uniqueAttribute + ':EQ:' + uniqueId,
-                        fields: 'trackedEntityInstance',
-                        pageSize: 1
-                    })
-                });
-
-                const results = await Promise.all(all);
-
-                const ids = results.map(r => {
-                    const { trackedEntityInstances } = r;
-                    return trackedEntityInstances.map(t => {
-                        return t.trackedEntityInstance;
-                    })
-                });
-
-                const entities = _.chunk(_.flatten(ids), 50).map(ids => ids.join(';'));
-
-                const all1 = entities.map(entityGroup => {
+                const chunked = _.chunk(this.uniqueIds, 100);
+                for (const ch of chunked) {
+                    let { rows } = await api.get('trackedEntityInstances/query.json', {
+                        program: this.id,
+                        filter: `${this.uniqueAttribute}:IN:${ch.join(';')}`,
+                        ouMode: 'ALL'
+                    });
+                    const instances = rows.map(r => r[0]).join(';');
                     const params = {
                         paging: false,
                         ouMode: 'ALL',
-                        trackedEntityInstance: entityGroup,
+                        trackedEntityInstance: instances,
                         fields: 'trackedEntityInstance,orgUnit,attributes[attribute,value],enrollments[enrollment,program,' +
                             'trackedEntityInstance,trackedEntityType,trackedEntity,enrollmentDate,incidentDate,orgUnit,events[program,trackedEntityInstance,event,' +
                             'eventDate,status,completedDate,coordinate,programStage,orgUnit,dataValues[dataElement,value]]]'
                     };
-                    return api.get('trackedEntityInstances', params)
-                });
-
-                const results1 = await Promise.all(all1);
-
-                let foundEntities = [];
-
-                for (let instance of results1) {
-                    const { trackedEntityInstances } = instance;
+                    const { trackedEntityInstances } = await api.get('trackedEntityInstances', params);
                     foundEntities = [...foundEntities, ...trackedEntityInstances];
+
                 }
                 return foundEntities;
             }
@@ -633,11 +615,7 @@ class Program {
                 this.setMessage('Finished creating tracked entities');
 
             }
-        } catch (e) {
-            this.setResponses(e);
-        }
 
-        try {
             if (trackedEntityInstancesUpdate.length > 0) {
                 const total = trackedEntityInstancesUpdate.length;
                 let current = 0;
@@ -654,11 +632,7 @@ class Program {
 
                 this.setMessage('Finished updating tracked entities');
             }
-        } catch (e) {
-            this.setResponses(e);
-        }
 
-        try {
             if (newEnrollments.length > 0) {
                 const total = newEnrollments.length;
                 let current = 0;
@@ -677,10 +651,7 @@ class Program {
                 this.setMessage('Finished creating enrollments for tracked entities');
 
             }
-        } catch (e) {
-            this.setResponses(e);
-        }
-        try {
+
             if (newEvents.length > 0) {
                 const total = newEvents.length;
                 let current = 0;
@@ -700,11 +671,7 @@ class Program {
                 }
                 this.setMessage('Finished creating events');
             }
-        } catch (e) {
-            this.setResponses(e);
-        }
 
-        try {
             if (eventsUpdate.length > 0) {
                 const total = newEvents.length;
                 let current = 0;
@@ -718,27 +685,20 @@ class Program {
                 }
                 this.setMessage('Finished updating events');
             }
+
+            this.setPulledData(null);
+            this.setWorkbook(null);
+            await this.setSelectedSheet(null);
+            this.setDisplayProgress(false);
+            this.setMessage('');
+            this.closeDialog();
         } catch (e) {
             this.setResponses(e);
+            this.closeDialog();
         }
-
-        this.setPulledData(null);
-        this.setWorkbook(null);
-        await this.setSelectedSheet(null);
-        this.setDisplayProgress(false);
-        this.setMessage('');
-        this.closeDialog();
     };
 
     @action saveMapping = async mappings => {
-        const {
-            conflicts,
-            duplicates,
-            errors
-        } = this.processed;
-        this.setConflicts(conflicts);
-        this.setErrors(errors);
-        this.setDuplicates(duplicates);
         const mapping = _.findIndex(mappings, {
             mappingId: this.mappingId
         });
@@ -854,39 +814,44 @@ class Program {
     };
 
     @action computeUnits = () => {
+
         if (this.orgUnitColumn && this.data.length > 0 && _.keys(this.data[0]).indexOf(this.orgUnitColumn.value) !== -1) {
             let units = this.data.map(d => {
                 return new OrganisationUnit('', d[this.orgUnitColumn.value], '');
             });
 
             units = _.uniqBy(units, v => JSON.stringify(v)).map(org => {
-                let foundOU = undefined;
+                const findInPrevious = this.sourceOrganisationUnits.find(su => su.name === org.name)
+                if (findInPrevious) {
+                    org.setMapping(findInPrevious.mapping);
 
-                const foundOUById = _.find(this.organisationUnits, o => {
-                    return o.id === org.name;
-                });
-
-                if (foundOUById) {
-                    foundOU = foundOUById;
                 } else {
-                    const foundOUByCode = _.find(this.organisationUnits, o => {
-                        return o.code === org.name;
+                    let foundOU = undefined;
+                    const foundOUById = _.find(this.organisationUnits, o => {
+                        return o.id === org.name;
                     });
-
-                    if (foundOUByCode) {
-                        foundOU = foundOUByCode;
+                    if (foundOUById) {
+                        foundOU = foundOUById;
                     } else {
-                        const foundOUByName = _.find(this.organisationUnits, o => {
-                            return org.name === o.name;
+                        const foundOUByCode = _.find(this.organisationUnits, o => {
+                            return o.code === org.name;
                         });
 
-                        if (foundOUByName) {
-                            foundOU = foundOUByName;
+                        if (foundOUByCode) {
+                            foundOU = foundOUByCode;
+                        } else {
+                            const foundOUByName = _.find(this.organisationUnits, o => {
+                                return org.name === o.name;
+                            });
+
+                            if (foundOUByName) {
+                                foundOU = foundOUByName;
+                            }
                         }
                     }
-                }
-                if (foundOU) {
-                    org.setMapping({ label: foundOU.name, value: foundOU.id });
+                    if (foundOU) {
+                        org.setMapping({ label: foundOU.name, value: foundOU.id });
+                    }
                 }
                 return org
             });
@@ -897,8 +862,8 @@ class Program {
     @action process = async () => {
         this.openDialog()
         const program = JSON.parse(JSON.stringify(this.canBeSaved));
-        const data = JSON.parse(JSON.stringify(this.data));
         const uniqueColumn = JSON.parse(JSON.stringify(this.uniqueColumn));
+        const data = JSON.parse(JSON.stringify(this.withoutDuplicates));
         let dataResponse;
         if (this.isTracker) {
             this.setMessage("Fetching previous tracked entity instances");
@@ -909,14 +874,53 @@ class Program {
         } else {
             const programStage = this.programStages[0];
             this.setMessage("Fetching previous events by date");
-            const eventsByDateData = await programStage.findEventsByDates(this);
-            this.setMessage("Fetching previous events by data elements marked as unique");
-            const eventsByDataElement = await programStage.findEventsByElements(this);
+            const eventsData = await programStage.findEvents(this);
             this.setMessage("Processing selected event program...")
-            dataResponse = await instance.processEventProgramData(program, data, eventsByDateData, eventsByDataElement);
+            dataResponse = await instance.processEventProgramData(program, data, eventsData);
+
         }
         this.setProcessed(dataResponse);
         this.closeDialog()
+    }
+
+    @computed get withoutDuplicates() {
+        if (!this.isTracker && this.data) {
+            let filteredData = [];
+
+            const programStage = this.programStages[0];
+            if (programStage.elementsWhichAreIdentifies.length > 0 && programStage.eventDateIdentifiesEvent) {
+                const grped = _.groupBy(this.data, (v) => {
+                    const ele = programStage.elementsWhichAreIdentifies.map(e => {
+                        return v[e.column.value];
+                    }).join('@');
+                    return `${ele}${moment(v[programStage.eventDateColumn.value]).format('YYYY-MM-DD')}`
+                });
+                _.forOwn(grped, (v, k) => {
+                    filteredData = [...filteredData, v[0]]
+                });
+                return filteredData;
+            } else if (programStage.elementsWhichAreIdentifies.length) {
+                const grped = _.groupBy(this.data, (v) => {
+                    return programStage.elementsWhichAreIdentifies.map(e => {
+                        return v[e.column.value];
+                    }).join('@');
+                });
+                _.forOwn(grped, (v, k) => {
+                    filteredData = [...filteredData, v[0]]
+                });
+                return filteredData;
+            } else if (programStage.eventDateIdentifiesEvent) {
+                const grped = _.groupBy(this.data, (v) => {
+                    return moment(v[programStage.eventDateColumn.value]).format('YYYY-MM-DD')
+                });
+                _.forOwn(grped, (v, k) => {
+                    filteredData = [...filteredData, v[0]]
+                });
+                return filteredData;
+            }
+        }
+
+        return this.data
     }
 
     @computed
@@ -1036,18 +1040,29 @@ class Program {
 
                 }
             } else if (response['httpStatusCode'] === 409) {
-                _.forEach(response['response']['importSummaries'], (s) => {
-                    _.forEach(s['conflicts'], (conflict) => {
-                        conflicts = [...conflicts, {
-                            ...conflict
-                        }];
-                    });
-                    if (s['href']) {
-                        successes = [...successes, {
-                            href: s['href']
-                        }];
-                    }
-                });
+                console.log(response);
+                // const { message, importSummaries } = response['response'];
+                // if (importSummaries) {
+
+                //     _.forEach(importSummaries, (s) => {
+                //         _.forEach(s['conflicts'], (conflict) => {
+                //             conflicts = [...conflicts, {
+                //                 ...conflict
+                //             }];
+                //         });
+                //         if (s['href']) {
+                //             successes = [...successes, {
+                //                 href: s['href']
+                //             }];
+                //         }
+                //     });
+                // }
+
+                // if (message) {
+                //     conflicts = [...conflicts, {
+                //         message
+                //     }];
+                // }
             } else if (response['httpStatusCode'] === 500) {
                 errors = [...errors, {
                     ...response['error']

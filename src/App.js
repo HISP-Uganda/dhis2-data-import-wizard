@@ -7,6 +7,7 @@ import { Provider } from "mobx-react";
 import * as PropTypes from 'prop-types';
 import IntegrationStore from './stores/IntegrationStore'
 import Program from './components/program';
+import Organisation from './components/organisation';
 
 import D2UIApp from '@dhis2/d2-ui-app';
 import Aggregate from "./components/aggregate";
@@ -148,6 +149,13 @@ class App extends Component {
                     <span>Schedules</span>
                   </Link>
                 </Menu.Item>
+
+                <Menu.Item key="4">
+                  <Link to="/organisations">
+                    <Icon type="bank" />
+                    <span>Organisation</span>
+                  </Link>
+                </Menu.Item>
               </Menu>
               <Route
                 exact
@@ -161,6 +169,10 @@ class App extends Component {
               <Route
                 path='/schedules'
                 component={() => <Schedule d2={this.state.d2} />} />
+
+              <Route
+                path='/organisations'
+                component={() => <Organisation d2={this.state.d2} />} />
               <NotificationContainer />
             </MuiThemeProvider>
           </D2UIApp>

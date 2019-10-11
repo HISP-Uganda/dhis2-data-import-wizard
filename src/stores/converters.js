@@ -169,6 +169,18 @@ export const convertAggregate = (ds, d2) => {
         return new OrganisationUnit(ou.id, ou.name, ou.code)
     });
 
+    let sourceOus = [];
+
+    if (ds.sourceOrganisationUnits) {
+        sourceOus = ds.sourceOrganisationUnits.map(ou => {
+            console.log(ou);
+            const o = new OrganisationUnit(ou.id, ou.name, ou.code);
+            if (ou.mapping) {
+                o.setMapping(ou.mapping);
+            }
+            return o
+        });
+    }
     dataSet.setOrganisationUnits(ous);
 
     dataSet.setOrganisation(ds.organisation);
@@ -183,11 +195,11 @@ export const convertAggregate = (ds, d2) => {
     dataSet.setMappingName(ds.mappingName || '');
     dataSet.setMappingDescription(ds.mappingDescription || '');
     dataSet.setCompleteDataSet(ds.completeDataSet);
-    dataSet.setSourceOrganisationUnits(ds.sourceOrganisationUnits || []);
+    dataSet.setSourceOrganisationUnits(sourceOus);
     dataSet.setSelectedIndicators(ds.selectedIndicators || []);
     dataSet.setCurrentLevel(ds.currentLevel);
     if (dataSet.isDhis2) {
-        dataSet.setDhis2DataSetChange(ds.selectedDataSet);
+        // dataSet.setDhis2DataSetChange(ds.selectedDataSet);
         dataSet.setCurrentLevel(ds.currentLevel);
         dataSet.loadLevelsAndDataSets();
     }

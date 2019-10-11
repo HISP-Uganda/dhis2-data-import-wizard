@@ -381,7 +381,7 @@ export const validText = (dataType, value) => {
     switch (dataType) {
         case 'TEXT':
         case 'LONG_TEXT':
-            return value;
+            return value !== null && value !== undefined && value.toString() !== '';
         case 'NUMBER':
             return !isNaN(value);
         case 'EMAIL':
@@ -408,6 +408,13 @@ export const validText = (dataType, value) => {
         case 'INTEGER_ZERO_OR_POSITIVE':
         case 'AGE':
             return Number.isInteger(value) && value >= 0;
+        case 'COORDINATE':
+            try {
+                const c = JSON.parse(value);
+                return _.isArray(c) && c.length === 2
+            } catch (e) {
+                return false;
+            }
         default:
             return true
     }
@@ -422,7 +429,7 @@ export const validateValue = (dataType, value, optionSet) => {
             }
         });
         const coded = _.find(options, o => {
-            return value + '' === o.code + '' || value + '' === o.value + '';
+            return String(value).toLowerCase() === String(o.code).toLowerCase() || String(value).toLowerCase() === String(o.value).toLowerCase();
         });
         if (coded !== undefined && coded !== null) {
             return coded.code;
@@ -628,20 +635,23 @@ export const isTracker = (program) => {
     return program.programType === 'WITH_REGISTRATION';
 };
 
-export const groupEntities = (attribute, trackedEntityInstances, ) => {
-    const entities = trackedEntityInstances.map(e => {
-        const uniqueAttribute = _.find(e.attributes, {
-            attribute
+export const groupEntities = (attribute, trackedEntityInstances) => {
+    if (trackedEntityInstances) {
+        const entities = trackedEntityInstances.map(e => {
+            const uniqueAttribute = _.find(e.attributes, {
+                attribute
+            });
+            const val = uniqueAttribute ? uniqueAttribute['value'] : null;
+            return {
+                ...e,
+                ..._.fromPairs([
+                    [attribute, val]
+                ])
+            }
         });
-        const val = uniqueAttribute ? uniqueAttribute['value'] : null;
-        return {
-            ...e,
-            ..._.fromPairs([
-                [attribute, val]
-            ])
-        }
-    });
-    return _.groupBy(entities, attribute);
+        return _.groupBy(entities, attribute);
+    }
+    return {};
 };
 
 
@@ -681,7 +691,6 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
         data = data.filter(d => {
             return d[uniqueColumn] !== null && d[uniqueColumn] !== undefined;
         });
-        console.log(instances);
         let clients = _.groupBy(data, uniqueColumn);
         let newClients = [];
         _.forOwn(clients, (data, client) => {
@@ -863,7 +872,6 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                 }
             });
             let groupedEvents = _.groupBy(events, 'programStage');
-            console.log(client.previous);
             if (client.previous.length > 1) {
                 duplicates = [...duplicates, { identifier: client.client }]
             } else if (client.previous.length === 1) {
@@ -1107,83 +1115,110 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
     }
 };
 
-export const searchSavedEvent = (programStages, event, eventByDate, eventsByDataElement) => {
+export const searchSavedEvent = (programStages, event, eventsData) => {
     const programStage = programStages[0];
-
-    const { eventDateIdentifiesEvent, programStageDataElements } = programStage;
-
-
+    const { eventDateIdentifiesEvent, programStageDataElements, updateEvents, createNewEvents } = programStage;
     const identifiesEvents = programStageDataElements.filter(psde => {
         return psde.dataElement.identifiesEvent && psde.column;
     }).map(e => e.dataElement.id);
-
-    const value = event.dataValues.filter(dv => {
+    const filtered = event.dataValues.filter(dv => {
         return identifiesEvents.indexOf(dv.dataElement) !== -1
-    }).map(dv => dv.value).join('@');
+    });
+    const value = _.orderBy(filtered, ['dataElement'], ['asc']).map(dv => dv.value).join('@');
+    const date = `${event.eventDate}${event.orgUnit}`;
 
     if (eventDateIdentifiesEvent && identifiesEvents.length > 0) {
-        const ev1 = eventByDate[event.eventDate];
+        const currentEvent = eventsData[date + value];
+        if (currentEvent && updateEvents) {
+            const { event: ev2, many: many1 } = currentEvent;
+            if (ev2 && !many1) {
+                const differingElements = _.differenceWith(event['dataValues'], ev2['dataValues'], (a, b) => {
+                    return a.dataElement === b.dataElement && a.value + '' === b.value + '';
+                });
 
-        const ev2 = eventsByDataElement[value];
-
-        if (ev1 && ev2) {
-            const differingElements = _.differenceWith(event['dataValues'], ev2['dataValues'], (a, b) => {
-                return a.dataElement === b.dataElement && a.value + '' === b.value + '';
-            });
-            if (differingElements.length > 0) {
-                return {
-                    ...ev2,
-                    update: true,
-                    dataValues: differingElements
-                };
+                if (differingElements.length > 0 && updateEvents) {
+                    return {
+                        ...ev2,
+                        update: true,
+                        duplicates: false,
+                        dataValues: differingElements
+                    };
+                }
+                return null;
+            } else if (ev2 && many1) {
+                return { ...event, duplicates: true, value: value + date, update: false };
+            } else {
+                return { ...event, update: false, duplicates: false };
             }
-            return null;
+        } else if (createNewEvents) {
+            return { ...event, update: false, duplicates: false };
         } else {
-            return { ...event, update: false };
+            return null;
         }
     } else if (eventDateIdentifiesEvent) {
-        const ev1 = eventByDate[event.eventDate];
-        if (ev1) {
-            const differingElements = _.differenceWith(event['dataValues'], ev1['dataValues'], (a, b) => {
-                return a.dataElement === b.dataElement && a.value + '' === b.value + '';
-            });
+        const currentEvent = eventsData[date];
+        if (currentEvent && updateEvents) {
+            const { event: ev1, many: many1 } = currentEvent;
+            if (ev1 && !many1) {
+                const differingElements = _.differenceWith(event['dataValues'], ev1['dataValues'], (a, b) => {
+                    return a.dataElement === b.dataElement && a.value + '' === b.value + '';
+                });
 
-            if (differingElements.length > 0) {
-                return {
-                    ...ev1,
-                    update: true,
-                    dataValues: differingElements
-                };
+                if (differingElements.length > 0) {
+                    return {
+                        ...ev1,
+                        update: true,
+                        duplicates: false,
+                        dataValues: differingElements
+                    };
+                }
+                return null;
+            } else if (ev1 && many1) {
+                return { ...event, duplicates: true, value: date, update: false };
+            } else {
+                return { ...event, update: false, duplicates: false };
             }
-            return null;
+        } else if (createNewEvents) {
+            return { ...event, update: false, duplicates: false };
         } else {
-            return { ...event, update: false };
+            return null
         }
-
     } else if (identifiesEvents.length > 0) {
-        const ev2 = eventsByDataElement[value];
-        if (ev2) {
-            const differingElements = _.differenceWith(event['dataValues'], ev2['dataValues'], (a, b) => {
-                return a.dataElement === b.dataElement && a.value + '' === b.value + '';
-            });
+        const currentEvent = eventsData[value];
+        if (currentEvent && updateEvents) {
+            const { event: ev2, many: many1 } = currentEvent;
+            if (ev2 && !many1) {
+                const differingElements = _.differenceWith(event['dataValues'], ev2['dataValues'], (a, b) => {
+                    return a.dataElement === b.dataElement && a.value + '' === b.value + '';
+                });
 
-            if (differingElements.length > 0) {
-                return {
-                    ...ev2,
-                    update: true,
-                    dataValues: differingElements
-                };
+                if (differingElements.length > 0) {
+                    return {
+                        ...ev2,
+                        update: true,
+                        duplicates: false,
+                        dataValues: differingElements
+                    };
+                }
+                return null;
+            } else if (ev2 && many1) {
+                return { ...event, duplicates: true, value, update: false };
+            } else {
+                return { ...event, update: false, duplicates: false };
             }
-            return null;
+        } else if (createNewEvents) {
+            return { ...event, update: false, duplicates: false };
         } else {
-            return { ...event, update: false };
+            return null;
         }
+    } else if (createNewEvents) {
+        return { ...event, update: false, duplicates: false }
     } else {
-        return { ...event, update: false }
+        return null;
     }
 };
 
-export const processEvents = (program, data, uniqueDatesData, uniqueDataElementData) => {
+export const processEvents = (program, data, eventsData) => {
     const {
         id,
         programStages,
@@ -1246,7 +1281,8 @@ export const processEvents = (program, data, uniqueDatesData, uniqueDataElementD
                             return o.code
                         }).join(','),
                         row: i + 2,
-                        column: e.column.value
+                        column: e.column.value,
+                        id: `${i + 2}${e.column.value}`
                     }];
 
                     return null;
@@ -1273,7 +1309,8 @@ export const processEvents = (program, data, uniqueDatesData, uniqueDataElementD
                 orgUnit: orgUnit && orgUnit.mapping ? orgUnit.mapping.value : null,
                 programStage: stage.id,
                 program: id,
-                event: generateUid()
+                event: generateUid(),
+                row: i + 2
             };
 
             if (found) {
@@ -1299,14 +1336,27 @@ export const processEvents = (program, data, uniqueDatesData, uniqueDataElementD
         }
 
         return null;
-    }).filter(e => e !== null && e.orgUnit !== null).map(ev => {
-        return searchSavedEvent(programStages, ev, uniqueDatesData, uniqueDataElementData)
+    }).filter(e => e !== null && e.orgUnit !== null).map((ev) => {
+        const searched = searchSavedEvent(programStages, ev, eventsData);
+        return searched;
+    })
+
+    const foundConflicts = events.filter(e => e && e.duplicates === true).map(e => {
+        return {
+            error: `More than one event found with value ${e.value}, could not update all events expected to find one event`,
+            row: e.row,
+            column: '',
+            id: `${e.row}`
+        };
     });
-    const eventsUpdate = events.filter(e => e !== null && e.update === true).map(e => {
-        return _.omit(e, 'update');
+
+    conflicts = [...conflicts, ...foundConflicts];
+
+    const eventsUpdate = events.filter(e => e && e.update === true && e.duplicates === false).map(e => {
+        return _.omit(e, ['update', 'duplicates', 'row']);
     });
-    const newEvents = events.filter(e => e !== null && e.update === false).map(e => {
-        return _.omit(e, 'update');
+    const newEvents = events.filter(e => e && e.update === false && e.duplicates === false).map(e => {
+        return _.omit(e, ['update', 'duplicates', 'row']);
     });
 
     return { eventsUpdate, newEvents, conflicts, errors }
