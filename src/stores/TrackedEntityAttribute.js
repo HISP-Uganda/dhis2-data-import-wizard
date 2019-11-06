@@ -1,4 +1,4 @@
-import {observable} from "mobx";
+import { observable } from "mobx";
 
 class TrackedEntityAttribute {
     @observable code;

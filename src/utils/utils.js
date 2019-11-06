@@ -537,7 +537,7 @@ export const removeDuplicates = (evs, stageEventFilters) => {
             }
         });
 
-    } else if (stageEventFilters && stageEventFilters.elements) {
+    } else if (stageEventFilters && stageEventFilters.elements && stageEventFilters.elements.length > 0) {
 
         evs = _.uniqBy(evs, v => {
             const filteredAndSame = stageEventFilters.elements.map(se => {
@@ -1057,7 +1057,6 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                             newEnrollments = [...newEnrollments, enrollment];
 
                         }
-
                         _.forOwn(groupedEvents, (evs, stage) => {
                             const stageEventFilters = identifierElements[stage];
                             const stageInfo = _.find(programStages, {
