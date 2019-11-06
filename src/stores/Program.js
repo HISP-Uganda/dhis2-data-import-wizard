@@ -385,7 +385,7 @@ class Program {
                     }
                 }
             } catch (e) {
-                NotificationManager.error(e.message, 'Error', 5000);
+                NotificationManager.error(`${e.message || ''}`, 'Error', 5000);
                 this.closeDialog();
             }
             this.closeDialog();
@@ -516,18 +516,19 @@ class Program {
                         filter: `${this.uniqueAttribute}:IN:${ch.join(';')}`,
                         ouMode: 'ALL'
                     });
-                    const instances = rows.map(r => r[0]).join(';');
-                    const params = {
-                        paging: false,
-                        ouMode: 'ALL',
-                        trackedEntityInstance: instances,
-                        fields: 'trackedEntityInstance,orgUnit,attributes[attribute,value],enrollments[enrollment,program,' +
-                            'trackedEntityInstance,trackedEntityType,trackedEntity,enrollmentDate,incidentDate,orgUnit,events[program,trackedEntityInstance,event,' +
-                            'eventDate,status,completedDate,coordinate,programStage,orgUnit,dataValues[dataElement,value]]]'
-                    };
-                    const { trackedEntityInstances } = await api.get('trackedEntityInstances', params);
-                    foundEntities = [...foundEntities, ...trackedEntityInstances];
-
+                    if (rows.length > 0) {
+                        const instances = rows.map(r => r[0]).join(';');
+                        const params = {
+                            paging: false,
+                            ouMode: 'ALL',
+                            trackedEntityInstance: instances,
+                            fields: 'trackedEntityInstance,orgUnit,attributes[attribute,value],enrollments[enrollment,program,' +
+                                'trackedEntityInstance,trackedEntityType,trackedEntity,enrollmentDate,incidentDate,orgUnit,events[program,trackedEntityInstance,event,' +
+                                'eventDate,status,completedDate,coordinate,programStage,orgUnit,dataValues[dataElement,value]]]'
+                        };
+                        const { trackedEntityInstances } = await api.get('trackedEntityInstances', params);
+                        foundEntities = [...foundEntities, ...trackedEntityInstances];
+                    }
                 }
                 return foundEntities;
             }
@@ -597,7 +598,7 @@ class Program {
             eventsUpdate
         } = this.processed;
         try {
-            if (newTrackedEntityInstances.length > 0) {
+            if (newTrackedEntityInstances && newTrackedEntityInstances.length > 0) {
                 const chunkedTEI = _.chunk(newTrackedEntityInstances, 250);
                 const total = newTrackedEntityInstances.length;
                 let current = 0;
@@ -616,7 +617,7 @@ class Program {
 
             }
 
-            if (trackedEntityInstancesUpdate.length > 0) {
+            if (trackedEntityInstancesUpdate && trackedEntityInstancesUpdate.length > 0) {
                 const total = trackedEntityInstancesUpdate.length;
                 let current = 0;
                 this.setMessage(`Updating tracked entities ${current}/${total}`);
@@ -633,7 +634,7 @@ class Program {
                 this.setMessage('Finished updating tracked entities');
             }
 
-            if (newEnrollments.length > 0) {
+            if (newEnrollments && newEnrollments.length > 0) {
                 const total = newEnrollments.length;
                 let current = 0;
                 this.setMessage(`Creating enrollments for tracked entities ${current}/${total}`);
@@ -652,7 +653,7 @@ class Program {
 
             }
 
-            if (newEvents.length > 0) {
+            if (newEvents && newEvents.length > 0) {
                 const total = newEvents.length;
                 let current = 0;
                 this.setMessage(`Creating events ${current}/${total}`);
@@ -672,7 +673,7 @@ class Program {
                 this.setMessage('Finished creating events');
             }
 
-            if (eventsUpdate.length > 0) {
+            if (eventsUpdate && eventsUpdate.length > 0) {
                 const total = newEvents.length;
                 let current = 0;
                 this.setMessage(`Updating events ${current}/${total}`);
@@ -694,6 +695,7 @@ class Program {
             this.closeDialog();
         } catch (e) {
             this.setResponses(e);
+            console.log(e);
             this.closeDialog();
         }
     };

@@ -152,6 +152,10 @@ export const convertAggregate = (ds, d2) => {
     dataSet.setResponseKey(ds.responseKey || '');
     dataSet.setProxy(ds.proxy || '');
     dataSet.setUseProxy(ds.useProxy);
+    dataSet.proIndicators = ds.proIndicators;
+    dataSet.dataIndicators = ds.dataIndicators;
+    dataSet.dataDataElements = ds.dataDataElements;
+    dataSet.selectedPeriods = ds.selectedPeriods || [];
 
     if (ds.params) {
         const params = ds.params.map(p => {
@@ -173,7 +177,6 @@ export const convertAggregate = (ds, d2) => {
 
     if (ds.sourceOrganisationUnits) {
         sourceOus = ds.sourceOrganisationUnits.map(ou => {
-            console.log(ou);
             const o = new OrganisationUnit(ou.id, ou.name, ou.code);
             if (ou.mapping) {
                 o.setMapping(ou.mapping);

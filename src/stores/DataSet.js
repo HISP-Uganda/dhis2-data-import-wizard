@@ -137,12 +137,40 @@ class DataSet {
     @observable proxy = '';
     @observable processed;
     @observable isUploadingFromPage;
+    @observable dialogOpened = false;
+
+    @observable selectedPeriods = [];
 
     @action setDialogOpen = val => this.dialogOpen = val;
     @action setProxy = val => this.proxy = val;
     @action setIsUploadingFromPage = val => this.isUploadingFromPage = val;
     @action openDialog = () => this.setDialogOpen(true);
     @action closeDialog = () => this.setDialogOpen(false);
+    @action onClose = () => {
+        this.setDialogOpened(false);
+    };
+
+    @action setSelectedPeriods = (val) => {
+        this.selectedPeriods = val;
+    };
+
+    @action onDeselect = (val) => {
+        const toBeDeselected = val.map(v => v.id);
+        const periods = this.selectedPeriods.filter(p => {
+            return toBeDeselected.indexOf(p.id) === -1
+        });
+
+        this.setSelectedPeriods(periods);
+
+    };
+
+    @action onReorder = () => {
+    };
+
+    @action onUpdate = async (selectedPeriods) => {
+        console.log(selectedPeriods);
+        this.setDialogOpened(false);
+    };
 
     @action
     setD2 = (d2) => {
@@ -162,6 +190,10 @@ class DataSet {
     @action setCategoryCombo = val => this.categoryCombo = val;
     @action setMapping = val => this.mapping = val;
     @action setDataValues = val => this.dataValues = val;
+    @action setDialogOpened = (val) => this.dialogOpened = val;
+    @action togglePeriodDialog = () => {
+        this.setDialogOpened(!this.dialogOpened);
+    };
     @action setTemplateType = val => {
         this.templateType = val;
         const forms = this.forms.map(f => {
@@ -270,11 +302,9 @@ class DataSet {
                 const org = new OrganisationUnit(ou.id, ou.name, ou.code);
 
                 let foundOU;
-
-                const foundOUById = _.find(this.organisationUnits, o => {
+                const foundOUById = this.organisationUnits.find(o => {
                     return o.id === ou.id;
                 });
-
                 if (foundOUById) {
                     foundOU = foundOUById;
                 } else {
@@ -295,10 +325,9 @@ class DataSet {
                         }
                     }
                 }
-                // console.log(foundOU);
-                // if (foundOU) {
-                //     org.setMapping({ label: foundOU.name, value: foundOU.id });
-                // }
+                if (foundOU) {
+                    org.setMapping({ label: foundOU.name, value: foundOU.id });
+                }
                 return org
 
             });
@@ -1756,7 +1785,11 @@ class DataSet {
                 'selectedIndicators',
                 'proxy',
                 'useProxy',
-                'rows'
+                'rows',
+                'proIndicators',
+                'dataIndicators',
+                'dataDataElements',
+                'selectedPeriods'
             ])
     }
 
