@@ -21,7 +21,7 @@ import TablePagination from "@material-ui/core/TablePagination";
 import * as PropTypes from "prop-types";
 import customStyles from "../customStyles";
 import { changeStyle } from "../../utils/data-utils";
-
+// import PeriodDialog from '../PeriodDialog';
 
 const styles = theme => ({
     block: {
@@ -246,10 +246,12 @@ class D2 extends React.Component {
                         isSearchable
                         styles={customStyles}
                     />
-                </div> : <PeriodPicker
-                    periodType={this.integrationStore.dataSet.periodType}
-                    onPickPeriod={(value) => this.integrationStore.dataSet.pick(value)}
-                />
+                </div> : <div>
+                    <PeriodPicker
+                        periodType={this.integrationStore.dataSet.periodType}
+                        onPickPeriod={(value) => this.integrationStore.dataSet.pick(value)}
+                    />
+                </div>
                 : null}
         </div>
     };
@@ -486,6 +488,8 @@ class D2 extends React.Component {
                 <Checkbox checked={this.integrationStore.dataSet.multiplePeriods}
                     onChange={this.integrationStore.dataSet.onCheckMultiplePeriods}
                     value="checked" /> Multiple Periods
+
+                {/* <PeriodDialog /> */}
 
                 {this.integrationStore.dataSet.multiplePeriods ? <div>
                     <Grid container spacing={8}>

@@ -130,18 +130,47 @@ class DataSet {
 
     @observable dataIndicators = false;
     @observable proIndicators = true;
+    @observable dataDataElements = false;
     @observable message = '';
     @observable scheduleServerUrl = 'http://localhost:3001';
     @observable useProxy = false;
     @observable proxy = '';
     @observable processed;
     @observable isUploadingFromPage;
+    @observable dialogOpened = false;
+
+    @observable selectedPeriods = [];
 
     @action setDialogOpen = val => this.dialogOpen = val;
     @action setProxy = val => this.proxy = val;
     @action setIsUploadingFromPage = val => this.isUploadingFromPage = val;
     @action openDialog = () => this.setDialogOpen(true);
     @action closeDialog = () => this.setDialogOpen(false);
+    @action onClose = () => {
+        this.setDialogOpened(false);
+    };
+
+    @action setSelectedPeriods = (val) => {
+        this.selectedPeriods = val;
+    };
+
+    @action onDeselect = (val) => {
+        const toBeDeselected = val.map(v => v.id);
+        const periods = this.selectedPeriods.filter(p => {
+            return toBeDeselected.indexOf(p.id) === -1
+        });
+
+        this.setSelectedPeriods(periods);
+
+    };
+
+    @action onReorder = () => {
+    };
+
+    @action onUpdate = async (selectedPeriods) => {
+        console.log(selectedPeriods);
+        this.setDialogOpened(false);
+    };
 
     @action
     setD2 = (d2) => {
@@ -161,6 +190,10 @@ class DataSet {
     @action setCategoryCombo = val => this.categoryCombo = val;
     @action setMapping = val => this.mapping = val;
     @action setDataValues = val => this.dataValues = val;
+    @action setDialogOpened = (val) => this.dialogOpened = val;
+    @action togglePeriodDialog = () => {
+        this.setDialogOpened(!this.dialogOpened);
+    };
     @action setTemplateType = val => {
         this.templateType = val;
         const forms = this.forms.map(f => {
@@ -268,12 +301,10 @@ class DataSet {
             organisations = organisations.map(ou => {
                 const org = new OrganisationUnit(ou.id, ou.name, ou.code);
 
-                let foundOU = undefined;
-
-                const foundOUById = _.find(this.organisationUnits, o => {
+                let foundOU;
+                const foundOUById = this.organisationUnits.find(o => {
                     return o.id === ou.id;
                 });
-
                 if (foundOUById) {
                     foundOU = foundOUById;
                 } else {
@@ -346,7 +377,8 @@ class DataSet {
     };
 
     @action replaceParamByValue = (p, search) => {
-
+        const replaced = p.value.replace("Sun", "");
+        p.value = replaced;
         const foundParam = _.findIndex(this.params, v => {
             return typeof v.value === 'string' && v.value.indexOf(search) !== -1
         });
@@ -551,12 +583,15 @@ class DataSet {
             const indicatorUrl = urlBase + '/indicators.json';
             const orgUnitLevelUrl = urlBase + '/organisationUnitLevels.json';
             const programIndicatorUrl = urlBase + '/programIndicators.json';
+            const dataElementsUrl = urlBase + '/dataElements.json';
             let levelResponse;
             let programIndicatorResponse;
             let indicatorResponse;
+            let dataElementsResponse;
 
             let items1 = [];
             let items2 = [];
+            let items3 = [];
 
             try {
 
@@ -596,6 +631,18 @@ class DataSet {
                         });
                     }
 
+                    if (this.dataDataElements) {
+                        dataElementsResponse = await postAxios(this.proxy, {
+                            username: this.username,
+                            password: this.password,
+                            url: dataElementsUrl,
+                            params: {
+                                paging: false,
+                                fields: 'id,name'
+                            }
+                        });
+                    }
+
 
                 } else {
                     levelResponse = await callAxios(orgUnitLevelUrl, {
@@ -613,6 +660,13 @@ class DataSet {
 
                     if (this.dataIndicators) {
                         indicatorResponse = await callAxios(indicatorUrl, {
+                            paging: false,
+                            fields: 'id,name'
+                        }, this.username, this.password);
+                    }
+
+                    if (this.dataDataElements) {
+                        dataElementsResponse = await callAxios(dataElementsUrl, {
                             paging: false,
                             fields: 'id,name'
                         }, this.username, this.password);
@@ -648,7 +702,17 @@ class DataSet {
                 }
 
 
-                const indicators = [...items1, ...items2];
+                if (dataElementsResponse) {
+                    items3 = dataElementsResponse.dataElements.map(dataElement => {
+                        return {
+                            text: dataElement.name,
+                            value: dataElement.id
+                        };
+                    });
+                }
+
+
+                const indicators = [...items1, ...items2, ...items3];
                 this.setIndicators(indicators);
 
                 this.itemStore.setState(indicators);
@@ -926,6 +990,9 @@ class DataSet {
 
     @action handleDataIndicators = event => {
         this.dataIndicators = event.target.checked;
+    };
+    @action handleDataDataElements = event => {
+        this.dataDataElements = event.target.checked;
     };
 
     @action handleOrganisationInExcel = event => {
@@ -1297,7 +1364,8 @@ class DataSet {
                         }
                     }
                 }
-                if (foundOU) {
+                console.log(foundOU);
+                if (foundOU !== undefined) {
                     org.setMapping({ label: foundOU.name, value: foundOU.id });
                 }
                 return org
@@ -1717,7 +1785,11 @@ class DataSet {
                 'selectedIndicators',
                 'proxy',
                 'useProxy',
-                'rows'
+                'rows',
+                'proIndicators',
+                'dataIndicators',
+                'dataDataElements',
+                'selectedPeriods'
             ])
     }
 

@@ -1,13 +1,13 @@
-import React, {Component} from "react";
-import {inject, observer} from "mobx-react";
-import {Table, TableBody, TableCell, TableHead, TableRow, withStyles} from "@material-ui/core";
+import React, { Component } from "react";
+import { inject, observer } from "mobx-react";
+import { Table, TableBody, TableCell, TableHead, TableRow, withStyles } from "@material-ui/core";
 import red from "@material-ui/core/colors/red";
 import Button from "@material-ui/core/Button";
 import Input from "@material-ui/core/Input";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import FormControl from "@material-ui/core/FormControl";
 import RadioGroup from "@material-ui/core/RadioGroup";
-import {GreenCheckbox, GreenRadio} from "../common";
+import { GreenCheckbox, GreenRadio } from "../common";
 
 const styles = theme => ({
     icon: {
@@ -27,7 +27,7 @@ class Params extends Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -83,22 +83,22 @@ class Params extends Component {
                                 value={p.periodType}
                                 onChange={p.handlePeriodTypeChange}
                             >
-                                <FormControlLabel value="1" control={<GreenRadio disabled={!p.isPeriod}/>}
-                                                  label="Is Start"/>
-                                <FormControlLabel value="2" control={<GreenRadio disabled={!p.isPeriod}/>}
-                                                  label="Is End"/>
+                                <FormControlLabel value="1" control={<GreenRadio disabled={!p.isPeriod} />}
+                                    label="Is Start" />
+                                <FormControlLabel value="2" control={<GreenRadio disabled={!p.isPeriod} />}
+                                    label="Is End" />
                             </RadioGroup>
                         </FormControl>
                     </TableCell>
                     <TableCell>
                         <Button id="deleteBtn" color="secondary"
-                                onClick={this.integrationStore.program.removeParam(i)}>Remove</Button>
+                            onClick={this.integrationStore.program.removeParam(i)}>Remove</Button>
                     </TableCell>
                 </TableRow>)}
                 <TableRow>
                     <TableCell colSpan={5} align="right">
                         <Button id="addBtn" color="primary"
-                                onClick={this.integrationStore.program.addParam}>ADD</Button>
+                            onClick={this.integrationStore.program.addParam}>ADD</Button>
                     </TableCell>
                 </TableRow>
             </TableBody>

@@ -32,3 +32,4 @@ arua.json
 test.json
 worker*
 database.json
+.env

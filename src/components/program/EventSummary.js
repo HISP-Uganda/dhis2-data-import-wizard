@@ -163,7 +163,7 @@ class Summary extends React.Component {
 
                     <Table
                         columns={conflictColumns}
-                        rowKey="row"
+                        rowKey="id"
                         dataSource={conflicts}
                     />
 

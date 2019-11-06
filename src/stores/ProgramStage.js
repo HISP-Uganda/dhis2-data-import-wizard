@@ -100,6 +100,7 @@ class ProgramStage {
     };
 
     findEventsByDates = async (program) => {
+        let processed = []
         const { d2, orgUnitColumn, id, organisationUnits, orgUnitStrategy } = program;
         const uploadedData = program.data;
         if (d2 && orgUnitColumn && uploadedData && id && this.eventDateColumn && this.eventDateIdentifiesEvent) {
@@ -120,72 +121,182 @@ class ProgramStage {
                     program: id,
                     startDate: e.eventDate,
                     endDate: e.eventDate,
-                    pageSize: 1,
+                    pageSize: 2,
                     orgUnit: e.orgUnit,
                     fields: 'event,eventDate,program,programStage,orgUnit,dataValues[dataElement,value]'
                 });
             });
-            const data = await Promise.all(all);
-            const processed = data.filter(response => {
-                return response.events.length > 0;
-            }).map(response => {
-                const event = response.events[0];
-                return [moment(event.eventDate).format('YYYY-MM-DD'), event]
+            const results = await Promise.all(all);
+            results.forEach(result => {
+                const { events } = result;
+                if (events.length > 0) {
+                    const event = events[0];
+                    if (events.length === 1) {
+                        processed = [...processed, [moment(event.eventDate).format('YYYY-MM-DD'), { event, many: false }]]
+                    } else {
+                        processed = [...processed, [moment(event.eventDate).format('YYYY-MM-DD'), { event, many: true }]]
+                    }
+                }
             });
-            return _.fromPairs(processed);
         }
+        return _.fromPairs(processed);
     };
 
-    findEventsByElements = async (program) => {
-        const { d2, id, orgUnitColumn, organisationUnits, orgUnitStrategy } = program;
+    searchOrganisation = (unit, sourceOrganisationUnits) => {
+        const ou = sourceOrganisationUnits.find(sou => unit === sou.name);
+        if (ou) {
+            return ou.mapping.value
+        }
+        return null;
+
+    }
+
+    convertRows2Events = (rows) => {
+        return rows.map(e => {
+            const { event, eventDate, program, programStage, orgUnit, ...rest } = e
+            const dataValues = this.programStageDataElements.map(psde => {
+                return { dataElement: psde.dataElement.id, value: rest[psde.dataElement.id] }
+            });
+            return { event, eventDate, program, programStage, orgUnit, dataValues }
+        })
+    }
+
+    findEvents = async program => {
+        let processed = []
+        const { d2, orgUnitColumn, sourceOrganisationUnits } = program;
         const uploadedData = program.data;
-        if (d2 && uploadedData && id && this.elementsWhichAreIdentifies.length > 0) {
-            const elements = this.elementsWhichAreIdentifies.map(e => {
-                return e.dataElement.id;
-            });
+        let eventDates;
+        let values;
+        let elements
 
+        if (uploadedData && d2) {
             const api = d2.Api.getApi();
-
-            let values = uploadedData.map(d => {
-                return this.elementsWhichAreIdentifies.map(e => {
-                    const ou = searchOrgUnit(d[orgUnitColumn.value], orgUnitStrategy, organisationUnits);
-                    return { value: d[e.column.value], de: e.dataElement.id, orgUnit: ou ? ou.id : null };
+            if (this.elementsWhichAreIdentifies.length > 0) {
+                elements = this.elementsWhichAreIdentifies.map(e => {
+                    return e.dataElement.id;
                 });
-            }).filter(f => _.every(f, v => {
-                return v.value !== null && v.value !== undefined && v.value !== '' && v.orgUnit
-            }));
+                values = uploadedData.map(d => {
+                    return this.elementsWhichAreIdentifies.map(e => {
+                        const ou = this.searchOrganisation(d[orgUnitColumn.value], sourceOrganisationUnits);
+                        return { value: d[e.column.value], de: e.dataElement.id, orgUnit: ou };
+                    });
+                }).filter(f => _.every(f, v => {
+                    return v.value !== null && v.value !== undefined && v.value !== '' && v.orgUnit
+                }));
+                values = _.uniqBy(values, v => {
+                    return JSON.stringify(v);
+                });
+            }
+            if (this.eventDateColumn && this.eventDateIdentifiesEvent) {
+                eventDates = uploadedData.map(d => {
+                    const ou = this.searchOrganisation(d[orgUnitColumn.value], sourceOrganisationUnits);
+                    const date = moment(d[this.eventDateColumn.value]);
+                    return {
+                        eventDate: date.isValid() ? date.format('YYYY-MM-DD') : null,
+                        orgUnit: ou
+                    };
+                }).filter(e => {
+                    return e.orgUnit && e.eventDate
+                });
 
-            values = _.uniqBy(values, v => {
-                return JSON.stringify(v);
-            });
+                eventDates = _.uniqBy(eventDates, v => {
+                    return JSON.stringify(v);
+                });
+            }
 
-            const all = values.map((e, i) => {
-                const filter = e.map(v => {
-                    return `filter=${v.de}:EQ:${v.value}`
-                }).join('&');
-                return api.get(`events.json?program=${id}&orgUnit=${e[0].orgUnit}&pageSize=1&fields=event,eventDate,program,programStage,orgUnit,dataValues[dataElement,value]&${filter}`, {})
-            });
-            const data = await Promise.all(all);
-            const processed = data.filter(response => {
-                return response.events.length > 0;
-            }).map(response => {
-                const event = response.events[0];
-                const es = event.dataValues.filter(d => {
-                    return elements.indexOf(d.dataElement) !== -1 && d.value;
-                }).map(s => s.value).join('@');
-                return [es, event]
-            });
+            if (eventDates && values && elements) {
+                const minDate = _.min(eventDates).eventDate;
+                const maxDate = _.max(eventDates).eventDate;
+                let { rows, headers } = await api.get(`events/query.json?programStage=${this.id}&skipPaging=true&startDate=${minDate}&endDate=${maxDate}`, {});
+                headers = headers.map(h => h['name']);
+                let response = rows.map(r => {
+                    return Object.assign.apply({}, headers.map((v, i) => ({
+                        [v]: r[i]
+                    })));
+                });
 
-            return _.fromPairs(processed);
+                const gp = _.groupBy(response, (v => {
+                    const element = elements.map(e => v[e]).join('@')
+                    const date = moment(v.eventDate).format('YYYY-MM-DD');
+                    return `${date}${v.orgUnit}${element}`;
+                }));
+
+                let pp = []
+                _.forOwn(gp, (v, k) => {
+                    const events = this.convertRows2Events(v);
+                    const event = events[0];
+                    pp = [...pp, [k, { event, many: events.length > 1 }]]
+                });
+                processed = [...processed, ...pp];
+
+            } else if (values && elements) {
+                const chunked = _.chunk(values, 250);
+                for (const value of chunked) {
+                    const flattened = _.flatten(value);
+                    const grouped = _.groupBy(flattened, 'de');
+                    const elements = _.keys(grouped)
+                    const filter = elements.map(de => {
+                        const vals = grouped[de].map(v => {
+                            const val = v.value;
+                            if (val && Object.prototype.toString.call(val) === "[object Date]" && !isNaN(val)) {
+                                return '';
+                            }
+                            return val;
+                        }).join(';');
+                        return `filter=${de}:IN:${vals}`
+                    }).join('&');
+
+                    let { rows, headers } = await api.get(`events/query.json?programStage=${this.id}&skipPaging=true&${filter}`, {});
+                    headers = headers.map(h => h['name']);
+                    const response = rows.map(r => {
+                        return Object.assign.apply({}, headers.map((v, i) => ({
+                            [v]: r[i]
+                        })));
+                    });
+
+                    const gp = _.groupBy(response, (v => {
+                        return elements.map(e => v[e]).join('@')
+                    }));
+                    let pp = []
+
+                    _.forOwn(gp, (v, k) => {
+                        const events = this.convertRows2Events(v);
+                        const event = events[0];
+                        pp = [...pp, [k, { event, many: events.length > 1 }]]
+                    })
+                    processed = [...processed, ...pp];
+                }
+            } else if (eventDates) {
+                const minDate = _.min(eventDates).eventDate;
+                const maxDate = _.max(eventDates).eventDate;
+                let { rows, headers } = await api.get(`events/query.json?programStage=${this.id}&skipPaging=true&startDate=${minDate}&endDate=${maxDate}`, {});
+                headers = headers.map(h => h['name']);
+                let response = rows.map(r => {
+                    return Object.assign.apply({}, headers.map((v, i) => ({
+                        [v]: r[i]
+                    })));
+                });
+
+                const gp = _.groupBy(response, (v => {
+                    const date = moment(v.eventDate).format('YYYY-MM-DD');
+                    return `${date}${v.orgUnit}`;
+                }));
+
+                let pp = []
+                _.forOwn(gp, (v, k) => {
+                    const events = this.convertRows2Events(v);
+                    const event = events[0];
+                    pp = [...pp, [k, { event, many: events.length > 1 }]]
+                });
+                processed = [...processed, ...pp];
+            }
         }
-    };
+        return _.fromPairs(processed);
 
-    @action makeElementAsIdentifier = (psde, program) => async event => {
+    }
+
+    @action makeElementAsIdentifier = (psde) => event => {
         psde.dataElement.setAsIdentifier(event.target.checked);
-        if (!program.isTracker) {
-            await this.findEventsByElements(program);
-        }
-
     };
 
     @action loadDefault = (columns) => {
@@ -227,8 +338,8 @@ class ProgramStage {
         return this.programStageDataElements.filter(psde => {
             return psde.dataElement.identifiesEvent && !_.isEmpty(psde.column);
         });
-    }
 
+    }
 }
 
 export default ProgramStage;

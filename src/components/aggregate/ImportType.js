@@ -1,15 +1,15 @@
-import {inject, observer} from "mobx-react";
+import { inject, observer } from "mobx-react";
 import React from "react";
-import {withStyles} from "@material-ui/core/styles";
+import { withStyles } from "@material-ui/core/styles";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import Grid from "@material-ui/core/Grid";
-import {InputField} from "@dhis2/d2-ui-core";
+import { InputField } from "@dhis2/d2-ui-core";
 import Dropzone from "react-dropzone";
 import Checkbox from "@material-ui/core/Checkbox";
 import FormGroup from "@material-ui/core/FormGroup";
 import Select from "react-select";
 import Params from "./Params";
-import {CloudUpload} from "@material-ui/icons";
+import { CloudUpload } from "@material-ui/icons";
 import Progress from "../progress";
 
 
@@ -26,12 +26,12 @@ const styles = theme => ({
 });
 
 const items = [
-    {label: 'Excel/CSV Listing to DHIS2 Data Set', value: "1"},
-    {label: 'Excel Tabular Data to DHIS2 Data Set', value: "2"},
-    {label: 'Excel Form to DHIS2 Data Set', value: "3"},
-    {label: 'DHIS2 to DHIS2 Data Set', value: "4"},
-    {label: 'DHIS2 Indicators to DHIS2 Data Set', value: "5"},
-    {label: 'Other Systems via API (REST) to DHIS2 Data Set', value: "6"},
+    { label: 'Excel/CSV Listing to DHIS2 Data Set', value: "1" },
+    { label: 'Excel Tabular Data to DHIS2 Data Set', value: "2" },
+    { label: 'Excel Form to DHIS2 Data Set', value: "3" },
+    { label: 'DHIS2 to DHIS2 Data Set', value: "4" },
+    { label: 'DHIS2 Indicators to DHIS2 Data Set', value: "5" },
+    { label: 'Other Systems via API (REST) to DHIS2 Data Set', value: "6" },
 ];
 
 
@@ -48,7 +48,7 @@ class ImportType extends React.Component {
 
     constructor(props) {
         super(props);
-        const {IntegrationStore} = props;
+        const { IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
     }
 
@@ -62,7 +62,7 @@ class ImportType extends React.Component {
                         type="text"
                         fullWidth
                         value={this.integrationStore.dataSet.url}
-                        onChange={(value) => this.integrationStore.dataSet.handelURLChange(value)}/>
+                        onChange={(value) => this.integrationStore.dataSet.handelURLChange(value)} />
                 </Grid>
             </Grid>
 
@@ -73,7 +73,7 @@ class ImportType extends React.Component {
                         type="text"
                         fullWidth
                         value={this.integrationStore.dataSet.username}
-                        onChange={(value) => this.integrationStore.dataSet.setUsername(value)}/>
+                        onChange={(value) => this.integrationStore.dataSet.setUsername(value)} />
                 </Grid>
                 <Grid item xs={6}>
                     <InputField
@@ -81,29 +81,29 @@ class ImportType extends React.Component {
                         type="text"
                         fullWidth
                         value={this.integrationStore.dataSet.password}
-                        onChange={(value) => this.integrationStore.dataSet.setPassword(value)}/>
+                        onChange={(value) => this.integrationStore.dataSet.setPassword(value)} />
                 </Grid>
             </Grid>
 
-            {this.integrationStore.dataSet.templateType.value === '6' ? <Params/> : null}
+            {this.integrationStore.dataSet.templateType.value === '6' ? <Params /> : null}
         </div>
     };
 
     upload = () => {
         return <Dropzone activeStyle={{}}
-                         accept=".csv, .xls, .xlsx"
-                         onDrop={this.integrationStore.dataSet.onDrop}>
-            {({getRootProps, getInputProps}) => (
+            accept=".csv, .xls, .xlsx"
+            onDrop={this.integrationStore.dataSet.onDrop}>
+            {({ getRootProps, getInputProps }) => (
                 <section>
                     <div {...getRootProps()}>
-                        <input {...getInputProps()}     />
-                        <br/>
+                        <input {...getInputProps()} />
+                        <br />
                         <p align="center">Drop files here</p>
                         <p align="center">
-                            <CloudUpload fontSize="large"/>
+                            <CloudUpload fontSize="large" />
                         </p>
                         <p align="center">{this.integrationStore.dataSet.fileName}</p>
-                        <p align="center" style={{color: 'red'}}>{this.integrationStore.dataSet.uploadMessage}</p>
+                        <p align="center" style={{ color: 'red' }}>{this.integrationStore.dataSet.uploadMessage}</p>
                     </div>
                 </section>
             )}
@@ -129,8 +129,8 @@ class ImportType extends React.Component {
                         value={this.integrationStore.dataSet.mappingDescription}
                         onChange={(value) => this.integrationStore.dataSet.handleMappingDescriptionChange(value)}
                     />
-                    <br/>
-                    <br/>
+                    <br />
+                    <br />
                     <Select
                         placeholder="Import Type"
                         value={this.integrationStore.dataSet.templateType}
@@ -164,6 +164,15 @@ class ImportType extends React.Component {
                                 }
                                 label="Program Indicators"
                             />
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={this.integrationStore.dataSet.dataDataElements}
+                                        onChange={this.integrationStore.dataSet.handleDataDataElements}
+                                    />
+                                }
+                                label="Data Elements"
+                            />
                         </FormGroup> : null}
                     {this.integrationStore.dataSet.templateType ? this.integrationStore.dataSet.getImportDataSource === 1 ? this.upload() : this.apiDataSource() : null}
                 </Grid>
@@ -196,7 +205,7 @@ class ImportType extends React.Component {
             </Grid>
 
             <Progress open={this.integrationStore.dataSet.dialogOpen}
-                      onClose={this.integrationStore.dataSet.closeDialog} message={"Uploading..."}/>
+                onClose={this.integrationStore.dataSet.closeDialog} message={"Uploading..."} />
         </div>
 
 

@@ -1,18 +1,18 @@
 import React from 'react';
 import * as PropTypes from 'prop-types';
-import {withStyles} from '@material-ui/core/styles';
-import {inject, observer} from "mobx-react";
+import { withStyles } from '@material-ui/core/styles';
+import { inject, observer } from "mobx-react";
 import Button from "@material-ui/core/Button";
 import Dialog from "@material-ui/core/Dialog";
-import {DialogActions, DialogContent, DialogTitle} from "./Fragments";
-import {InputField} from "@dhis2/d2-ui-core";
+import { DialogActions, DialogContent, DialogTitle } from "./Fragments";
+import { InputField } from "@dhis2/d2-ui-core";
 import FormControl from "@material-ui/core/FormControl";
 import FormLabel from "@material-ui/core/FormLabel";
 import RadioGroup from "@material-ui/core/RadioGroup";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import Radio from "@material-ui/core/Radio";
 import Select from "react-select";
-import {PlayArrow, Stop, Delete} from "@material-ui/icons";
+import { PlayArrow, Stop, Delete } from "@material-ui/icons";
 import Table from '@dhis2/d2-ui-table';
 
 
@@ -42,7 +42,7 @@ class Schedule extends React.Component {
 
     constructor(props) {
         super(props);
-        const {d2, IntegrationStore} = props;
+        const { d2, IntegrationStore } = props;
         this.integrationStore = IntegrationStore;
         this.integrationStore.setD2(d2);
     }
@@ -55,132 +55,132 @@ class Schedule extends React.Component {
 
 
     render() {
-        return (<div style={{margin: 5}}>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={this.integrationStore.fetchSavedSchedules}
-                >
-                    Refresh
+        return (<div style={{ margin: 5 }}>
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={this.integrationStore.fetchSavedSchedules}
+            >
+                Refresh
                 </Button>
-                <br/>
-                <br/>
-                {this.integrationStore.schedules.length > 0 ?
-                    <Table
-                        columns={['name', 'created', 'last', 'next']}
-                        rows={this.integrationStore.schedules}
-                        contextMenuActions={this.integrationStore.scheduleActions}
-                        contextMenuIcons={{
-                            delete: <Delete/>,
-                            start: <PlayArrow/>,
-                            stop: <Stop/>
-                        }}
-                        primaryAction={this.integrationStore.updateSchedule}/> :
-                    <p style={{textAlign: 'center', fontSize: 15}}>There are no items</p>}
+            <br />
+            <br />
+            {this.integrationStore.schedules.length > 0 ?
+                <Table
+                    columns={['name', 'created', 'last', 'next']}
+                    rows={this.integrationStore.schedules}
+                    contextMenuActions={this.integrationStore.scheduleActions}
+                    contextMenuIcons={{
+                        delete: <Delete />,
+                        start: <PlayArrow />,
+                        stop: <Stop />
+                    }}
+                    primaryAction={this.integrationStore.updateSchedule} /> :
+                <p style={{ textAlign: 'center', fontSize: 15 }}>There are no items</p>}
 
 
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={this.integrationStore.createSchedule}
-                >
-                    New Schedule
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={this.integrationStore.createSchedule}
+            >
+                New Schedule
                 </Button>
 
 
-                <Dialog
-                    fullWidth={true}
-                    maxWidth={'lg'}
-                    open={this.integrationStore.scheduled}
-                    onClose={this.integrationStore.closeScheduledDialog}
-                    aria-labelledby="alert-dialog-title"
-                    aria-describedby="alert-dialog-description">
-                    <DialogTitle id="alert-dialog-title"
-                                 onClose={this.integrationStore.closeScheduledDialog}>{"Schedule"}</DialogTitle>
-                    <DialogContent>
-                        <InputField
-                            label="Scheduling server"
-                            type="text"
-                            fullWidth
-                            value={this.integrationStore.currentSchedule.url}
-                            onChange={(value) => this.integrationStore.currentSchedule.setUrl(value)}/>
+            <Dialog
+                fullWidth={true}
+                maxWidth={'lg'}
+                open={this.integrationStore.scheduled}
+                onClose={this.integrationStore.closeScheduledDialog}
+                aria-labelledby="alert-dialog-title"
+                aria-describedby="alert-dialog-description">
+                <DialogTitle id="alert-dialog-title"
+                    onClose={this.integrationStore.closeScheduledDialog}>{"Schedule"}</DialogTitle>
+                <DialogContent>
+                    <InputField
+                        label="Scheduling server"
+                        type="text"
+                        fullWidth
+                        value={this.integrationStore.currentSchedule.url}
+                        onChange={(value) => this.integrationStore.currentSchedule.setUrl(value)} />
 
-                        <InputField
-                            label="Schedule name"
-                            type="text"
-                            fullWidth
-                            value={this.integrationStore.currentSchedule.name}
-                            onChange={(value) => this.integrationStore.currentSchedule.setName(value)}/>
-                        <FormControl component="fieldset">
-                            <FormLabel component="legend">Type</FormLabel>
-                            <RadioGroup
-                                row={true}
-                                aria-label="Gender"
-                                name="gender1"
-                                value={this.integrationStore.currentSchedule.type}
-                                onChange={this.integrationStore.handleChange}
-                            >
-                                <FormControlLabel value="aggregate" control={<Radio/>} label="Aggregate"/>
-                                <FormControlLabel value="tracker" control={<Radio/>} label="Tracker"/>
-                            </RadioGroup>
-                        </FormControl>
-                        <Select
-                            placeholder="Select mapping"
-                            isClearable
-                            isSearchable
-                            value={this.integrationStore.currentSchedule.value}
-                            options={this.integrationStore.currentOptions}
-                            onChange={this.integrationStore.currentSchedule.setValue}
-                        />
-                        <br/>
-                        <br/>
+                    <InputField
+                        label="Schedule name"
+                        type="text"
+                        fullWidth
+                        value={this.integrationStore.currentSchedule.name}
+                        onChange={(value) => this.integrationStore.currentSchedule.setName(value)} />
+                    <FormControl component="fieldset">
+                        <FormLabel component="legend">Type</FormLabel>
+                        <RadioGroup
+                            row={true}
+                            aria-label="Gender"
+                            name="gender1"
+                            value={this.integrationStore.currentSchedule.type}
+                            onChange={this.integrationStore.handleChange}
+                        >
+                            <FormControlLabel value="aggregate" control={<Radio />} label="Aggregate" />
+                            <FormControlLabel value="tracker" control={<Radio />} label="Tracker" />
+                        </RadioGroup>
+                    </FormControl>
+                    <Select
+                        placeholder="Select mapping"
+                        isClearable
+                        isSearchable
+                        value={this.integrationStore.currentSchedule.value}
+                        options={this.integrationStore.currentOptions}
+                        onChange={this.integrationStore.currentSchedule.setValue}
+                    />
+                    <br />
+                    <br />
 
-                        {this.integrationStore.currentSchedule.value ? <FormControl component="fieldset">
-                            <FormLabel component="legend">Schedule</FormLabel>
-                            <RadioGroup
-                                row={true}
-                                aria-label="Gender"
-                                name="gender1"
-                                value={this.integrationStore.currentSchedule.schedule}
-                                onChange={this.integrationStore.currentSchedule.handleScheduleChange}
-                            >
-                                <FormControlLabel value="Every5s" control={<Radio/>} label="Every Five Seconds"/>
-                                <FormControlLabel value="Minutely" control={<Radio/>} label="Every Minute"/>
-                                <FormControlLabel value="Hourly" control={<Radio/>} label="Hourly"/>
-                                <FormControlLabel value="Daily" control={<Radio/>} label="Daily"/>
-                                <FormControlLabel value="Weekly" control={<Radio/>} label="Weekly"/>
-                                <FormControlLabel value="Monthly" control={<Radio/>} label="Monthly"/>
-                                <FormControlLabel value="Quarterly" control={<Radio/>} label="Quarterly"/>
-                                <FormControlLabel value="SixMonthly" control={<Radio/>} label="Semi Yearly"/>
-                                <FormControlLabel value="Yearly" control={<Radio/>} label="Yearly"/>
-                                <FormControlLabel value="FinancialJuly" control={<Radio/>} label="Financial July"/>
-                                <FormControlLabel value="FinancialApril" control={<Radio/>} label="Financial April"/>
-                                <FormControlLabel value="FinancialOct" control={<Radio/>} label="Financial October"/>
-                            </RadioGroup>
-                        </FormControl> : null}
+                    {this.integrationStore.currentSchedule.value ? <FormControl component="fieldset">
+                        <FormLabel component="legend">Schedule</FormLabel>
+                        <RadioGroup
+                            row={true}
+                            aria-label="Gender"
+                            name="gender1"
+                            value={this.integrationStore.currentSchedule.schedule}
+                            onChange={this.integrationStore.currentSchedule.handleScheduleChange}
+                        >
+                            <FormControlLabel value="Every5s" control={<Radio />} label="Every Five Seconds" />
+                            <FormControlLabel value="Minutely" control={<Radio />} label="Every Minute" />
+                            <FormControlLabel value="Hourly" control={<Radio />} label="Hourly" />
+                            <FormControlLabel value="Daily" control={<Radio />} label="Daily" />
+                            <FormControlLabel value="Weekly" control={<Radio />} label="Weekly" />
+                            <FormControlLabel value="Monthly" control={<Radio />} label="Monthly" />
+                            <FormControlLabel value="Quarterly" control={<Radio />} label="Quarterly" />
+                            <FormControlLabel value="SixMonthly" control={<Radio />} label="Semi Yearly" />
+                            <FormControlLabel value="Yearly" control={<Radio />} label="Yearly" />
+                            <FormControlLabel value="FinancialJuly" control={<Radio />} label="Financial July" />
+                            <FormControlLabel value="FinancialApril" control={<Radio />} label="Financial April" />
+                            <FormControlLabel value="FinancialOct" control={<Radio />} label="Financial October" />
+                        </RadioGroup>
+                    </FormControl> : null}
 
-                        {this.integrationStore.currentSchedule.canAddDays ? <InputField
-                            label="Additional days"
-                            type="number"
-                            fullWidth
-                            value={this.integrationStore.currentSchedule.additionalDays}
-                            onChange={(value) => this.integrationStore.currentSchedule.setAdditionalDays(value)}/> : null}
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={this.integrationStore.closeScheduledDialog} color="primary">
-                            Cancel
+                    {this.integrationStore.currentSchedule.canAddDays ? <InputField
+                        label="Additional days"
+                        type="number"
+                        fullWidth
+                        value={this.integrationStore.currentSchedule.additionalDays}
+                        onChange={(value) => this.integrationStore.currentSchedule.setAdditionalDays(value)} /> : null}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={this.integrationStore.closeScheduledDialog} color="primary">
+                        Cancel
                         </Button>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            disabled={this.integrationStore.currentSchedule.isSaveDisabled}
-                            onClick={this.integrationStore.saveSchedule}>
-                            Save
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        disabled={this.integrationStore.currentSchedule.isSaveDisabled}
+                        onClick={this.integrationStore.saveSchedule}>
+                        Save
                         </Button>
-                    </DialogActions>
-                </Dialog>
+                </DialogActions>
+            </Dialog>
 
-            </div>
+        </div>
         );
     }
 }
