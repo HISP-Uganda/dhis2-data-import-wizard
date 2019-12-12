@@ -436,7 +436,7 @@ export const validateValue = (dataType, value, optionSet) => {
         }
     } else if (validText(dataType, value)) {
         if (dataType === 'DATETIME') {
-            return moment(value).format('YYYY-MM-DD HH:mm:ss');
+            return moment(value).format('YYYY-MM-DDTHH:mm');
         } else if (dataType === 'DATE') {
             return moment(value).format('YYYY-MM-DD');
         } else if (dataType === 'TIME') {
