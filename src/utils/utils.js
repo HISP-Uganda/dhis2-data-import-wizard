@@ -765,7 +765,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                                     dataElement: e.dataElement.id,
                                     value: validatedValue
                                 }];
-                            } else if (value !== undefined) {
+                            } else if (value !== undefined && value !== null) {
                                 conflicts = [...conflicts, {
                                     error: optionsSet === null ? 'Invalid value ' + value + ' for value type ' + type : 'Invalid value: ' + value + ', expected: ' + _.map(optionsSet.options, o => {
                                         return o.code
@@ -1274,7 +1274,7 @@ export const processEvents = (program, data, eventsData) => {
                         dataElement: e.dataElement.id,
                         value: validatedValue
                     }
-                } else if (value !== undefined) {
+                } else if (value !== undefined && value !== null) {
                     conflicts = [...conflicts, {
                         error: optionsSet === null ? 'Invalid value ' + value + ' for value type ' + type : 'Invalid value: ' + value + ', expected: ' + _.map(optionsSet.options, o => {
                             return o.code

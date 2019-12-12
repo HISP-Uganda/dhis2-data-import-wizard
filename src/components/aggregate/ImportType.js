@@ -4,6 +4,7 @@ import { withStyles } from "@material-ui/core/styles";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import Grid from "@material-ui/core/Grid";
 import { InputField } from "@dhis2/d2-ui-core";
+import TextField from '@material-ui/core/TextField'
 import Dropzone from "react-dropzone";
 import Checkbox from "@material-ui/core/Checkbox";
 import FormGroup from "@material-ui/core/FormGroup";
@@ -78,7 +79,7 @@ class ImportType extends React.Component {
                 <Grid item xs={6}>
                     <InputField
                         label="Password"
-                        type="text"
+                        type="password"
                         fullWidth
                         value={this.integrationStore.dataSet.password}
                         onChange={(value) => this.integrationStore.dataSet.setPassword(value)} />
