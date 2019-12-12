@@ -661,7 +661,7 @@ class IntegrationStore {
             value: this.paging.d1.rowsPerPage
         }, {
             param: 'fields',
-            value: 'id,name,code,periodType,categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]],dataSetElements[dataElement[id,name,code,valueType,categoryCombo[id,name,categoryOptionCombos[id,name]]]],organisationUnits[id,name,code],organisationUnits[id,name,code]'
+            value: 'id,name,code,periodType,categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]],dataSetElements[dataElement[id,name,code,valueType,dataSetElements[dataSet,categoryCombo[id,name,isDefault,categoryOptionCombos[id,name]]],categoryCombo[id,name,isDefault,categoryOptionCombos[id,name]]]],organisationUnits[id,name,code],organisationUnits[id,name,code]'
         }, {
             param: 'order',
             value: 'name:asc'
@@ -685,9 +685,25 @@ class IntegrationStore {
 
         try {
             let { dataSets, pager: { total } } = await api.get(`dataSets?${stringParams}`);
-            dataSets = dataSets.map(dataSet => {
-                const groupedDataElements = _.groupBy(dataSet['dataSetElements'], 'dataElement.categoryCombo.id');
 
+            dataSets = dataSets.map(dataSet => {
+
+                const processed = dataSet.dataSetElements.map(dataSetElement => {
+                    if (!dataSetElement.dataElement.categoryCombo.isDefault) {
+                        const newCombo = dataSetElement.dataElement.dataSetElements.find(dse => {
+                            return dse.dataSet.id === dataSet.id && dse.categoryCombo && dse.categoryCombo.isDefault
+                        });
+
+                        if (newCombo) {
+                            dataSetElement = { ...dataSetElement, dataElement: { ...dataSetElement.dataElement, categoryCombo: newCombo.categoryCombo } }
+                        }
+                    }
+                    return dataSetElement
+                });
+
+                dataSet = { ...dataSet, dataSetElements: processed }
+
+                const groupedDataElements = _.groupBy(dataSet['dataSetElements'], 'dataElement.categoryCombo.id');
                 const forms = _.map(groupedDataElements, v => {
                     const dataElements = v.map(des => {
                         return {
@@ -705,16 +721,13 @@ class IntegrationStore {
                         categoryOptionCombos
                     }
                 });
-
                 const organisationUnits = dataSet['organisationUnits'];
-
                 return {
                     ..._.pick(dataSet, ['id', 'name', 'code', 'periodType', 'categoryCombo']),
                     organisationUnits,
                     forms
                 };
             });
-
             this.setDataSets(dataSets);
             this.setTotalDataSets(total);
             this.closeDialog();

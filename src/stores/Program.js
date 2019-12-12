@@ -579,7 +579,6 @@ class Program {
     };
 
     @action setResponses = val => {
-
         if (Array.isArray(val)) {
             this.responses = [...this.responses, ...val]
         } else {
