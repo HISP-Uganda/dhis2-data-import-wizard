@@ -375,13 +375,11 @@ export const programUniqueAttribute = (program) => {
 
     return null;
 };
-
-
 export const validText = (dataType, value) => {
     switch (dataType) {
         case 'TEXT':
         case 'LONG_TEXT':
-            return value !== null && value !== undefined && value.toString() !== '';
+            return value !== null && value !== undefined;
         case 'NUMBER':
             return !isNaN(value);
         case 'EMAIL':
@@ -1133,14 +1131,17 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
             if (ev2 && !many1) {
                 const differingElements = _.differenceWith(event['dataValues'], ev2['dataValues'], (a, b) => {
                     return a.dataElement === b.dataElement && a.value + '' === b.value + '';
+                }).filter(v => {
+                    return v.value !== 'null';
                 });
 
                 if (differingElements.length > 0 && updateEvents) {
                     return {
                         ...ev2,
                         update: true,
+                        eventDate: moment(ev2['eventDate']).format('YYYY-MM-DD'),
                         duplicates: false,
-                        dataValues: differingElements
+                        dataValues: _.unionBy(ev2['dataValues'].filter(e => e.value !== ''), event['dataValues'], 'dataElement')
                     };
                 }
                 return null;
@@ -1161,14 +1162,17 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
             if (ev1 && !many1) {
                 const differingElements = _.differenceWith(event['dataValues'], ev1['dataValues'], (a, b) => {
                     return a.dataElement === b.dataElement && a.value + '' === b.value + '';
+                }).filter(v => {
+                    return v.value !== 'null';
                 });
 
                 if (differingElements.length > 0) {
                     return {
                         ...ev1,
                         update: true,
+                        eventDate: moment(ev1['eventDate']).format('YYYY-MM-DD'),
                         duplicates: false,
-                        dataValues: differingElements
+                        dataValues: _.unionBy(ev1['dataValues'].filter(e => e.value !== ''), event['dataValues'], 'dataElement')
                     };
                 }
                 return null;
@@ -1188,15 +1192,20 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
             const { event: ev2, many: many1 } = currentEvent;
             if (ev2 && !many1) {
                 const differingElements = _.differenceWith(event['dataValues'], ev2['dataValues'], (a, b) => {
-                    return a.dataElement === b.dataElement && a.value + '' === b.value + '';
+                    return a.dataElement === b.dataElement && a.value && b.value && a.value + '' === b.value + '';
+                }).filter(v => {
+                    return v.value !== 'null';
                 });
 
                 if (differingElements.length > 0) {
                     return {
                         ...ev2,
+                        eventDate: moment(ev2['eventDate']).format('YYYY-MM-DD'),
                         update: true,
                         duplicates: false,
-                        dataValues: differingElements
+                        dataValues: _.unionWith(ev2['dataValues'].filter(e => e.value !== ''), event['dataValues'], (a, b) => {
+                            return a.dataElement === b.dataElement;
+                        })
                     };
                 }
                 return null;
@@ -1264,17 +1273,19 @@ export const processEvents = (program, data, eventsData) => {
 
         if (eventDate && mapped.length > 0) {
             const dataValues = mapped.map(e => {
-                const value = d[e.column.value];
+                let value = d[e.column.value];
                 const type = e.dataElement.valueType;
+                if (type === 'TEXT') {
+                    value = String(value).trim();
+                }
                 const optionsSet = e.dataElement.optionSet;
                 const validatedValue = validateValue(type, value, optionsSet);
-
                 if (value !== '' && validatedValue !== null) {
                     return {
                         dataElement: e.dataElement.id,
                         value: validatedValue
                     }
-                } else if (value !== undefined && value !== null) {
+                } else if (value !== undefined && value !== null && value !== '') {
                     conflicts = [...conflicts, {
                         error: optionsSet === null ? 'Invalid value ' + value + ' for value type ' + type : 'Invalid value: ' + value + ', expected: ' + _.map(optionsSet.options, o => {
                             return o.code
