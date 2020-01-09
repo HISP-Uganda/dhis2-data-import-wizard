@@ -566,16 +566,9 @@ class Program {
     @action
     updateDHISEvents = (eventsUpdate) => {
         const api = this.d2.Api.getApi();
-        const events = eventsUpdate.map(event => {
-            return event.dataValues.map(dataValue => {
-                const { eventDate, ...others } = event;
-                return { event: { ...others, dataValues: [dataValue] }, dataElement: dataValue.dataElement };
-            });
+        return eventsUpdate.map(event => {
+            return api.update('events/' + event.event, event, {})
         });
-
-        return _.flatten(events).map(ev => {
-            return api.update('events/' + ev.event.event + '/' + ev.dataElement, ev.event, {})
-        })
     };
 
     @action setResponses = val => {
@@ -673,17 +666,18 @@ class Program {
             }
 
             if (eventsUpdate && eventsUpdate.length > 0) {
-                const total = newEvents.length;
+                const total = eventsUpdate.length;
                 let current = 0;
                 this.setMessage(`Updating events ${current}/${total}`);
                 const chunkedEvents = _.chunk(eventsUpdate, 250);
-                for (const events of chunkedEvents) {
-                    current = current + events.length;
-                    this.setMessage(`Updating events ${current}/${total}`);
-                    const eventsResults = await Promise.all(this.updateDHISEvents(events));
-                    this.setResponses(eventsResults);
-                }
-                this.setMessage('Finished updating events');
+                console.log(JSON.stringify(chunkedEvents, null, 2));
+                // for (const events of chunkedEvents) {
+                //     current = current + events.length;
+                //     this.setMessage(`Updating events ${current}/${total}`);
+                //     const eventsResults = await Promise.all(this.updateDHISEvents(events));
+                //     this.setResponses(eventsResults);
+                // }
+                // this.setMessage('Finished updating events');
             }
 
             this.setPulledData(null);

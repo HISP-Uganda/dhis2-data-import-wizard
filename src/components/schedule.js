@@ -146,6 +146,7 @@ class Schedule extends React.Component {
                         >
                             <FormControlLabel value="Every5s" control={<Radio />} label="Every Five Seconds" />
                             <FormControlLabel value="Minutely" control={<Radio />} label="Every Minute" />
+                            <FormControlLabel value="Every5m" control={<Radio />} label="Every Five Minutes" />
                             <FormControlLabel value="Hourly" control={<Radio />} label="Hourly" />
                             <FormControlLabel value="Daily" control={<Radio />} label="Daily" />
                             <FormControlLabel value="Weekly" control={<Radio />} label="Weekly" />

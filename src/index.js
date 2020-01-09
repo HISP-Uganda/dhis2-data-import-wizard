@@ -10,13 +10,13 @@ import { Provider } from "mobx-react";
 
 const config = {};
 if (process.env.NODE_ENV === 'development') {
-    // config.baseUrl = `http://localhost:8080/api`;
+    config.baseUrl = `http://localhost:8080/api`;
     // config.baseUrl = 'https://play.dhis2.org/2.30/api'
     // config.baseUrl = 'https://ds.dev.hispuganda.org/api'
     // config.baseUrl = 'https://ds.dev.hispuganda.org/api';
-    config.baseUrl = 'https://programs.psiug.org/psi/api'
-    // config.headers = { Authorization: 'Basic YWRtaW46ZGlzdHJpY3Q=' }; // admin
-    config.headers = { Authorization: 'Basic SGlzcDpBcGlAMjAxOSE=' };// dev pace
+    // config.baseUrl = 'https://programs.psiug.org/psi/api'
+    config.headers = { Authorization: 'Basic YWRtaW46ZGlzdHJpY3Q=' }; // admin
+    // config.headers = { Authorization: 'Basic SGlzcDpBcGlAMjAxOSE=' };// dev pace
     // config.baseUrl = `http://dhis2-staging.kuunika.org:8087/api`;
     // config.headers = { Authorization: 'Basic bWJvbmdlbmljaGl6b25kYTpBYmlreWwyMkA=' };
     // config.headers = { Authorization: 'Basic c3RlcGhlbjpIaXNwQDIwMTk=' };
