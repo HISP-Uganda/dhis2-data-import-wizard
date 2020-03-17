@@ -207,7 +207,7 @@ class ProgramStage {
             if (eventDates && values && elements) {
                 const minDate = _.min(eventDates).eventDate;
                 const maxDate = _.max(eventDates).eventDate;
-                let { rows, headers } = await api.get(`events/query.json?programStage=${this.id}&skipPaging=true&startDate=${minDate}&endDate=${maxDate}`, {});
+                let { rows, headers } = await api.get(`events/query.json?programStage=${this.id}&skipPaging=true&startDate=${minDate}&endDate=${maxDate}&includeAllDataElements=true`, {});
                 headers = headers.map(h => h['name']);
                 let response = rows.map(r => {
                     return Object.assign.apply({}, headers.map((v, i) => ({
@@ -246,7 +246,7 @@ class ProgramStage {
                         return `filter=${de}:IN:${vals}`
                     }).join('&');
 
-                    let { rows, headers } = await api.get(`events/query.json?programStage=${this.id}&skipPaging=true&${filter}`, {});
+                    let { rows, headers } = await api.get(`events/query.json?programStage=${this.id}&skipPaging=true&${filter}&includeAllDataElements=true`, {});
                     headers = headers.map(h => h['name']);
                     const response = rows.map(r => {
                         return Object.assign.apply({}, headers.map((v, i) => ({
@@ -269,7 +269,7 @@ class ProgramStage {
             } else if (eventDates) {
                 const minDate = _.min(eventDates).eventDate;
                 const maxDate = _.max(eventDates).eventDate;
-                let { rows, headers } = await api.get(`events/query.json?programStage=${this.id}&skipPaging=true&startDate=${minDate}&endDate=${maxDate}`, {});
+                let { rows, headers } = await api.get(`events/query.json?programStage=${this.id}&skipPaging=true&startDate=${minDate}&endDate=${maxDate}&includeAllDataElements=true`, {});
                 headers = headers.map(h => h['name']);
                 let response = rows.map(r => {
                     return Object.assign.apply({}, headers.map((v, i) => ({
@@ -320,9 +320,6 @@ class ProgramStage {
         const sorter = this.order === 'desc'
             ? (a, b) => (b[this.orderBy] < a[this.orderBy] ? -1 : 1)
             : (a, b) => (a[this.orderBy] < b[this.orderBy] ? -1 : 1);
-        /*const elements = this.programStageDataElements.map(e => {
-            return {...e, ...e.dataElement};
-        });*/
         return this.programStageDataElements.filter(item => {
             const displayName = item.dataElement.displayName.toLowerCase();
             return displayName.includes(this.dataElementsFilter ? this.dataElementsFilter : '')
