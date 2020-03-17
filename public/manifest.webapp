@@ -8,7 +8,7 @@
   },
   "appType": "APP",
   "name": "Data Import Wizard",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Data Importer Wizard",
   "icons": {
     "48": "favicon.ico"

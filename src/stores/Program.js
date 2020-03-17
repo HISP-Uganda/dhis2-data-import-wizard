@@ -670,14 +670,14 @@ class Program {
                 let current = 0;
                 this.setMessage(`Updating events ${current}/${total}`);
                 const chunkedEvents = _.chunk(eventsUpdate, 250);
-                console.log(JSON.stringify(chunkedEvents, null, 2));
-                // for (const events of chunkedEvents) {
-                //     current = current + events.length;
-                //     this.setMessage(`Updating events ${current}/${total}`);
-                //     const eventsResults = await Promise.all(this.updateDHISEvents(events));
-                //     this.setResponses(eventsResults);
-                // }
-                // this.setMessage('Finished updating events');
+
+                for (const events of chunkedEvents) {
+                    current = current + events.length;
+                    this.setMessage(`Updating events ${current}/${total}`);
+                    const eventsResults = await Promise.all(this.updateDHISEvents(events));
+                    this.setResponses(eventsResults);
+                }
+                this.setMessage('Finished updating events');
             }
 
             this.setPulledData(null);
