@@ -512,7 +512,7 @@ class Program {
                 const chunked = _.chunk(this.uniqueIds, 100);
                 for (const ch of chunked) {
                     let { rows } = await api.get('trackedEntityInstances/query.json', {
-                        program: this.id,
+                        // program: this.id,
                         filter: `${this.uniqueAttribute}:IN:${ch.join(';')}`,
                         ouMode: 'ALL'
                     });

@@ -1,6 +1,7 @@
 import _ from "lodash";
 import moment from "moment";
-import { generateUid } from "./uid";
+import {generateUid} from "./uid";
+
 export const nest = function (seq, keys) {
   if (!keys.length)
     return seq;
@@ -208,7 +209,7 @@ export const processDataSet = (data, dataSet) => {
                 if (foundOU) {
                   orgUnit = foundOU;
                 } else {
-                  errors = [...errors, { error: `Organisation unit ${ou} not found` }]
+                  errors = [...errors, {error: `Organisation unit ${ou} not found`}]
                 }
               }
 
@@ -343,7 +344,7 @@ export const processDataSet = (data, dataSet) => {
     });
   } else if (templateType.value === '4') {
     _.forOwn(cell2, v => {
-      const { dataElement, categoryOptionCombo } = v.value.mapping
+      const {dataElement, categoryOptionCombo} = v.value.mapping
       const found = data.filter(d => {
         return d.dataElement === v.value.dataElement && d.categoryOptionCombo === v.value.categoryOptionCombo;
       }).map(f => {
@@ -361,7 +362,7 @@ export const processDataSet = (data, dataSet) => {
             error: `Organisation unit ${f.orgUnit} not mapped`,
           }]
         }
-        const { value, period } = f;
+        const {value, period} = f;
         return {
           orgUnit,
           value,
@@ -386,6 +387,8 @@ export const programUniqueColumn = (program) => {
     return a.trackedEntityAttribute.unique && a.column;
   });
 
+  console.log(unique);
+
   if (unique.length > 0) {
     return unique[0]['column']['value'];
   }
@@ -395,8 +398,10 @@ export const programUniqueColumn = (program) => {
 
 export const programUniqueAttribute = (program) => {
   const unique = program.programTrackedEntityAttributes.filter(a => {
-    return a.trackedEntityAttribute.unique;
+    return a.trackedEntityAttribute.unique && a.column;
   });
+
+  console.log(unique);
 
   if (unique.length > 0) {
     return unique[0]['trackedEntityAttribute']['id'];
@@ -835,7 +840,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
             }
 
             if (found) {
-              event = { ...event, attributeOptionCombo: found.id }
+              event = {...event, attributeOptionCombo: found.id}
             }
 
 
@@ -900,7 +905,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
       });
       let groupedEvents = _.groupBy(events, 'programStage');
       if (client.previous.length > 1) {
-        duplicates = [...duplicates, { identifier: client.client }]
+        duplicates = [...duplicates, {identifier: client.client}]
       } else if (client.previous.length === 1) {
         client.previous.forEach(p => {
           let enrollments = p['enrollments'];
@@ -1143,7 +1148,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
 
 export const searchSavedEvent = (programStages, event, eventsData) => {
   const programStage = programStages[0];
-  const { eventDateIdentifiesEvent, programStageDataElements, updateEvents, createNewEvents } = programStage;
+  const {eventDateIdentifiesEvent, programStageDataElements, updateEvents, createNewEvents} = programStage;
   const identifiesEvents = programStageDataElements.filter(psde => {
     return psde.dataElement.identifiesEvent && psde.column;
   }).map(e => e.dataElement.id);
@@ -1156,7 +1161,7 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
   if (eventDateIdentifiesEvent && identifiesEvents.length > 0) {
     const currentEvent = eventsData[date + value];
     if (currentEvent && updateEvents) {
-      const { event: ev2, many: many1 } = currentEvent;
+      const {event: ev2, many: many1} = currentEvent;
       if (ev2 && !many1) {
 
         const difference = event['dataValues'].filter(x => {
@@ -1172,7 +1177,7 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
           const updatedDataValues = ev2['dataValues'].map(dv => {
             const search = difference.find(v => v.dataElement === dv.dataElement);
             if (search) {
-              dv = { ...dv, value: search.value }
+              dv = {...dv, value: search.value}
             }
 
             return dv;
@@ -1187,19 +1192,19 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
         }
         return null;
       } else if (ev2 && many1) {
-        return { ...event, duplicates: true, value: value + date, update: false };
+        return {...event, duplicates: true, value: value + date, update: false};
       } else {
-        return { ...event, update: false, duplicates: false };
+        return {...event, update: false, duplicates: false};
       }
     } else if (createNewEvents) {
-      return { ...event, update: false, duplicates: false };
+      return {...event, update: false, duplicates: false};
     } else {
       return null;
     }
   } else if (eventDateIdentifiesEvent) {
     const currentEvent = eventsData[date];
     if (currentEvent && updateEvents) {
-      const { event: ev1, many: many1 } = currentEvent;
+      const {event: ev1, many: many1} = currentEvent;
       if (ev1 && !many1) {
         const difference = event['dataValues'].filter(x => {
           const search = ev1['dataValues'].find(v => v.dataElement === x.dataElement);
@@ -1215,7 +1220,7 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
           const updatedDataValues = ev1['dataValues'].map(dv => {
             const search = difference.find(v => v.dataElement === dv.dataElement);
             if (search) {
-              dv = { ...dv, value: search.value }
+              dv = {...dv, value: search.value}
             }
 
             return dv;
@@ -1229,19 +1234,19 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
           };
         }
       } else if (ev1 && many1) {
-        return { ...event, duplicates: true, value: date, update: false };
+        return {...event, duplicates: true, value: date, update: false};
       } else {
-        return { ...event, update: false, duplicates: false };
+        return {...event, update: false, duplicates: false};
       }
     } else if (createNewEvents) {
-      return { ...event, update: false, duplicates: false };
+      return {...event, update: false, duplicates: false};
     } else {
       return null
     }
   } else if (identifiesEvents.length > 0) {
     const currentEvent = eventsData[value];
     if (currentEvent && updateEvents) {
-      let { event: ev2, many: many1 } = currentEvent;
+      let {event: ev2, many: many1} = currentEvent;
       if (ev2 && !many1) {
         const difference = event['dataValues'].filter(x => {
           const search = ev2['dataValues'].find(v => v.dataElement === x.dataElement);
@@ -1256,7 +1261,7 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
           const updatedDataValues = ev2['dataValues'].map(dv => {
             const search = difference.find(v => v.dataElement === dv.dataElement);
             if (search) {
-              dv = { ...dv, value: search.value }
+              dv = {...dv, value: search.value}
             }
 
             return dv;
@@ -1271,17 +1276,17 @@ export const searchSavedEvent = (programStages, event, eventsData) => {
         }
         return null;
       } else if (ev2 && many1) {
-        return { ...event, duplicates: true, value, update: false };
+        return {...event, duplicates: true, value, update: false};
       } else {
-        return { ...event, update: false, duplicates: false };
+        return {...event, update: false, duplicates: false};
       }
     } else if (createNewEvents) {
-      return { ...event, update: false, duplicates: false };
+      return {...event, update: false, duplicates: false};
     } else {
       return null;
     }
   } else if (createNewEvents) {
-    return { ...event, update: false, duplicates: false }
+    return {...event, update: false, duplicates: false}
   } else {
     return null;
   }
@@ -1382,7 +1387,7 @@ export const processEvents = (program, data, eventsData) => {
       };
 
       if (found) {
-        event = { ...event, attributeOptionCombo: found.id }
+        event = {...event, attributeOptionCombo: found.id}
       }
 
       if (coordinate) {
@@ -1427,7 +1432,7 @@ export const processEvents = (program, data, eventsData) => {
     return _.omit(e, ['update', 'duplicates', 'row']);
   });
 
-  return { eventsUpdate, newEvents, conflicts, errors }
+  return {eventsUpdate, newEvents, conflicts, errors}
 };
 
 export const partialParamSearch = (search, params) => {
