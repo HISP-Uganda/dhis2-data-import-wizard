@@ -891,10 +891,15 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
             incidentDate = enrollmentDate
           }
 
-          if (enrollmentDate.isValid() && incidentDate && incidentDate.isValid()) {
+          if (enrollmentDate.isValid() && enrollmentDate.isBefore(moment()) && incidentDate && incidentDate.isValid() && incidentDate.isBefore(moment())) {
             enrollmentDates = [...enrollmentDates, {
               enrollmentDate: enrollmentDate.format('YYYY-MM-DD'),
               incidentDate: incidentDate.format('YYYY-MM-DD')
+            }]
+          } else if (enrollmentDate.isAfter(moment()) || incidentDate.isAfter(moment())) {
+            conflicts = [...conflicts, {
+              error: 'enrollment or incident date is in the feature',
+              row: client.client
             }]
           }
         }
@@ -911,7 +916,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
           let enrollments = p['enrollments'];
           if (updateEntities) {
             const nAttributes = _.differenceWith(allAttributes[0], p['attributes'], (a, b) => {
-              return a.attribute === b.attribute && a.value + '' === b.value + '';
+              return a.attribute === b.attribute && String(a.value) === String(b.value);
             });
             if (nAttributes.length > 0) {
               const mergedAttributes = _.unionBy(allAttributes[0], p['attributes'], 'attribute');
@@ -1005,7 +1010,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                   if (eventIndex !== -1 && updateEvents) {
                     const stageEvent = enrollmentEvents[eventIndex];
                     const differingElements = _.differenceWith(e['dataValues'], stageEvent['dataValues'], (a, b) => {
-                      return a.dataElement === b.dataElement && a.value + '' === b.value + '';
+                      return a.dataElement === b.dataElement && String(a.value) === String(b.value);
                     });
                     if (differingElements.length > 0) {
                       const mergedEvent = {
@@ -1025,7 +1030,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                 let max = _.maxBy(evs, 'eventDate');
                 if (foundEvent && updateEvents) {
                   const differingElements = _.differenceWith(max['dataValues'], foundEvent['dataValues'], (a, b) => {
-                    return a.dataElement === b.dataElement && a.value + '' === b.value + '';
+                    return a.dataElement === b.dataElement && String(a.value) === String(b.value);
                   });
                   if (differingElements.length > 0) {
                     const mergedEvent = {
@@ -1041,7 +1046,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
             });
           }
         });
-      } else {
+      } else if (createEntities){
         orgUnits = _.uniq(orgUnits);
         let orgUnit;
         if (orgUnits.length > 1) {
@@ -1054,30 +1059,26 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
           if (orgUnit && orgUnit.mapping) {
             const foundOrgUnitId = orgUnit.mapping.value;
             const trackedEntityInstance = generateUid();
+            let tei = {
+              orgUnit: foundOrgUnitId,
+              attributes: allAttributes[0],
+              trackedEntityInstance
+            };
 
-            if (createEntities) {
-              let tei = {
-                orgUnit: foundOrgUnitId,
-                attributes: allAttributes[0],
-                trackedEntityInstance
-              };
-
-              if (trackedEntityType) {
-                tei = {
-                  ...tei,
-                  trackedEntityType: trackedEntityType.id
-                }
-              } else if (trackedEntity && trackedEntity.id) {
-                tei = {
-                  ...tei,
-                  trackedEntity: trackedEntity.id
-                }
+            if (trackedEntityType) {
+              tei = {
+                ...tei,
+                trackedEntityType: trackedEntityType.id
               }
-              newTrackedEntityInstances = [...newTrackedEntityInstances, tei];
+            } else if (trackedEntity && trackedEntity.id) {
+              tei = {
+                ...tei,
+                trackedEntity: trackedEntity.id
+              }
             }
+            newTrackedEntityInstances = [...newTrackedEntityInstances, tei];
 
-            if (createNewEnrollments) {
-
+            if (createNewEnrollments && enrollmentDates.length > 0) {
               let enrollment = {
                 orgUnit: foundOrgUnitId,
                 program: id,
@@ -1106,7 +1107,6 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                   trackedEntityInstance
                 }
               });
-
               evs = removeDuplicates(evs, stageEventFilters);
 
               if (createNewEvents) {

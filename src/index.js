@@ -10,7 +10,7 @@ import { Provider } from "mobx-react";
 
 const config = {};
 if (process.env.NODE_ENV === 'development') {
-  // config.baseUrl = `http://localhost:8080/api`;
+  config.baseUrl = `http://localhost:8080/api`;
   // config.baseUrl = 'https://play.dhis2.org/2.30/api'
   // config.baseUrl = 'https://ds.dev.hispuganda.org/api'
   // config.baseUrl = 'https://ds.dev.hispuganda.org/api';
