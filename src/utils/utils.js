@@ -242,8 +242,6 @@ export const processDataSet = (data, dataSet) => {
                   error: `Attribute with value not found`,
                 }]
               }
-
-
             });
           } else if (templateType.value === '5') {
             const units = allSourceWithMapping(dataSet);
@@ -387,8 +385,6 @@ export const programUniqueColumn = (program) => {
     return a.trackedEntityAttribute.unique && a.column;
   });
 
-  console.log(unique);
-
   if (unique.length > 0) {
     return unique[0]['column']['value'];
   }
@@ -401,15 +397,13 @@ export const programUniqueAttribute = (program) => {
     return a.trackedEntityAttribute.unique && a.column;
   });
 
-  console.log(unique);
-
   if (unique.length > 0) {
     return unique[0]['trackedEntityAttribute']['id'];
   }
 
   return null;
 };
-export const validText = (dataType, value) => {
+export const validText = (dataType, value, dataSource) => {
   switch (dataType) {
     case 'TEXT':
     case 'LONG_TEXT':
@@ -430,6 +424,10 @@ export const validText = (dataType, value) => {
     case 'DATE':
     case 'DATETIME':
     case 'TIME':
+      if (['xlsx', 'xls'].indexOf(dataSource) !== -1) {
+        const evDate = -2209075200000 + (value - (value < 61 ? 0 : 1)) * 86400000;
+        return moment(new Date(evDate)).isValid();
+      }
       return moment(value).isValid();
     case 'UNIT_INTERVAL':
       return value >= 0 && value <= 1;
@@ -452,7 +450,7 @@ export const validText = (dataType, value) => {
   }
 };
 
-export const validateValue = (dataType, value, optionSet) => {
+export const validateValue = (dataType, value, optionSet, dataSource) => {
   if (optionSet) {
     const options = optionSet.options.map(o => {
       return {
@@ -466,15 +464,27 @@ export const validateValue = (dataType, value, optionSet) => {
     if (!!coded) {
       return coded.code;
     }
-  } else if (validText(dataType, value)) {
-    if (dataType === 'DATETIME') {
-      return moment(value).format('YYYY-MM-DDTHH:mm');
-    } else if (dataType === 'DATE') {
-      return moment(value).format('YYYY-MM-DD');
-    } else if (dataType === 'TIME') {
-      return moment(value).format('HH:mm');
+  } else if (validText(dataType, value, dataSource)) {
+    if (['xlsx', 'xls'].indexOf(dataSource) !== -1) {
+      const evDate = -2209075200000 + (value - (value < 61 ? 0 : 1)) * 86400000;
+      if (dataType === 'DATETIME') {
+        return moment(new Date(evDate)).format('YYYY-MM-DDTHH:mm');
+      } else if (dataType === 'DATE') {
+        return moment(new Date(evDate)).format('YYYY-MM-DD');
+      } else if (dataType === 'TIME') {
+        return moment(new Date(evDate)).format('HH:mm');
+      }
+      return value;
+    } else {
+      if (dataType === 'DATETIME') {
+        return moment(value).format('YYYY-MM-DDTHH:mm');
+      } else if (dataType === 'DATE') {
+        return moment(value).format('YYYY-MM-DD');
+      } else if (dataType === 'TIME') {
+        return moment(value).format('HH:mm');
+      }
+      return value;
     }
-    return value;
   }
   return null;
 };
@@ -523,23 +533,6 @@ export const searchSourceOrgUnits = (orgUnit, organisationUnits) => {
   })
 };
 
-export const makeSourceUnitTree = (organisationUnits) => {
-  return _.fromPairs(organisationUnits.map(u => [u.name, u]));
-}
-
-export const getLocation = (href) => {
-  const match = href.match(/^(https?:)\/\/(([^:/?#]*)(?::([0-9]+))?)([/]?[^?#]*)(\?[^#]*|)(#.*|)$/);
-  return match && {
-    href: href,
-    protocol: match[1],
-    host: match[2],
-    hostname: match[3],
-    port: match[4],
-    pathname: match[5],
-    search: match[6],
-    hash: match[7]
-  }
-};
 
 export const removeDuplicates = (evs, stageEventFilters) => {
   if (stageEventFilters && stageEventFilters.elements && stageEventFilters.event) {
@@ -705,6 +698,8 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
     programStages,
     dataSource,
     programTrackedEntityAttributes,
+    selectIncidentDatesInFuture,
+    selectEnrollmentDatesInFuture,
     incidentDateColumn,
     enrollmentDateColumn,
     trackedEntityType,
@@ -756,13 +751,14 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
         programStages.forEach(stage => {
           let dataValues = [];
           let eventDate;
-          if (stage.eventDateColumn && (stage.createNewEvents || stage.updateEvents) && dataSource === 2) {
-            const date = moment(d[stage.eventDateColumn.value]);
+          if (stage.eventDateColumn && (stage.createNewEvents || stage.updateEvents) && ['xlsx', 'xls'].indexOf(dataSource) !== -1) {
+            const evDate = -2209075200000 + (d[stage.eventDateColumn.value] - (d[stage.eventDateColumn.value] < 61 ? 0 : 1)) * 86400000;
+            const date = moment(new Date(evDate), 'YYYY-MM-DD');
             if (date.isValid()) {
               eventDate = date.format('YYYY-MM-DD');
             }
           } else if (stage.eventDateColumn && (stage.createNewEvents || stage.updateEvents)) {
-            const date = moment(d[stage.eventDateColumn.value], 'YYYY-MM-DD');
+            const date = moment(d[stage.eventDateColumn.value]);
             if (date.isValid()) {
               eventDate = date.format('YYYY-MM-DD');
             }
@@ -881,24 +877,68 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
         }
 
         if (enrollmentDateColumn) {
-          const enrollmentDate = moment(d[enrollmentDateColumn.value], 'YYYY-MM-DD');
-
+          let enrollmentDate;
           let incidentDate;
+          if (dataSource === 'xlsx' || dataSource === 'xls') {
+            const eDate = -2209075200000 + (d[enrollmentDateColumn.value] - (d[enrollmentDateColumn.value] < 61 ? 0 : 1)) * 86400000;
+            const currentDate = new Date(eDate);
+            enrollmentDate = moment(currentDate, 'YYYY-MM-DD');
+          } else {
+            enrollmentDate = moment(d[enrollmentDateColumn.value]);
+          }
 
           if (incidentDateProvided && incidentDateColumn) {
-            incidentDate = moment(d[incidentDateColumn.value], 'YYYY-MM-DD');
+            if (dataSource === 'xlsx' || dataSource === 'xls') {
+              const iDate = -2209075200000 + (d[incidentDateColumn.value] - (d[incidentDateColumn.value] < 61 ? 0 : 1)) * 86400000;
+              incidentDate = moment(new Date(iDate), 'YYYY-MM-DD');
+            } else {
+              incidentDate = moment(d[incidentDateColumn.value], 'YYYY-MM-DD');
+            }
           } else if (!incidentDateProvided) {
             incidentDate = enrollmentDate
           }
 
-          if (enrollmentDate.isValid() && enrollmentDate.isBefore(moment()) && incidentDate && incidentDate.isValid() && incidentDate.isBefore(moment())) {
-            enrollmentDates = [...enrollmentDates, {
-              enrollmentDate: enrollmentDate.format('YYYY-MM-DD'),
-              incidentDate: incidentDate.format('YYYY-MM-DD')
-            }]
-          } else if (enrollmentDate.isAfter(moment()) || incidentDate.isAfter(moment())) {
+          if (enrollmentDate && incidentDate && enrollmentDate.isValid() && incidentDate.isValid()) {
+            if (!selectEnrollmentDatesInFuture && !selectIncidentDatesInFuture) {
+              if (enrollmentDate.isBefore(moment()) && incidentDate.isBefore(moment())) {
+                enrollmentDates = [...enrollmentDates, {
+                  enrollmentDate: enrollmentDate.format('YYYY-MM-DD'),
+                  incidentDate: incidentDate.format('YYYY-MM-DD')
+                }]
+              } else {
+                conflicts = [...conflicts, {
+                  error: 'both enrollment and incident dates are in the feature which is different from program setup',
+                  row: client.client
+                }]
+              }
+            } else if (!selectEnrollmentDatesInFuture && selectIncidentDatesInFuture) {
+              if (enrollmentDate.isBefore(moment())) {
+                enrollmentDates = [...enrollmentDates, {
+                  enrollmentDate: enrollmentDate.format('YYYY-MM-DD'),
+                  incidentDate: incidentDate.format('YYYY-MM-DD')
+                }]
+              } else {
+                conflicts = [...conflicts, {
+                  error: 'enrollment date is in the feature which is different from program setup',
+                  row: client.client
+                }]
+              }
+            } else if (selectEnrollmentDatesInFuture && !selectIncidentDatesInFuture) {
+              if (incidentDate.isBefore(moment())) {
+                enrollmentDates = [...enrollmentDates, {
+                  enrollmentDate: enrollmentDate.format('YYYY-MM-DD'),
+                  incidentDate: incidentDate.format('YYYY-MM-DD')
+                }]
+              } else {
+                conflicts = [...conflicts, {
+                  error: 'incident date is in the feature which is different from program setup',
+                  row: client.client
+                }]
+              }
+            }
+          } else {
             conflicts = [...conflicts, {
-              error: 'enrollment or incident date is in the feature',
+              error: 'enrollment or incident date is not valid',
               row: client.client
             }]
           }
@@ -1046,7 +1086,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
             });
           }
         });
-      } else if (createEntities){
+      } else if (createEntities) {
         orgUnits = _.uniq(orgUnits);
         let orgUnit;
         if (orgUnits.length > 1) {
@@ -1310,8 +1350,11 @@ export const processEvents = (program, data, eventsData) => {
     let eventDate;
     let coordinate = null;
     let orgUnit;
-    if (stage.eventDateColumn && (stage.createNewEvents || stage.updateEvents) && dataSource === 2) {
-      const date = moment(d[stage.eventDateColumn.value]);
+
+    if (stage.eventDateColumn && (stage.createNewEvents || stage.updateEvents) && ['xlsx', 'xls'].indexOf(dataSource) !== -1) {
+      const eDate = -2209075200000 + (d[stage.eventDateColumn.value] - (d[stage.eventDateColumn.value] < 61 ? 0 : 1)) * 86400000;
+      const currentDate = new Date(eDate);
+      const date = moment(currentDate);
       if (date.isValid()) {
         eventDate = date.format('YYYY-MM-DD');
       }
@@ -1410,8 +1453,7 @@ export const processEvents = (program, data, eventsData) => {
 
     return null;
   }).filter(e => e !== null && e.orgUnit !== null).map((ev) => {
-    const searched = searchSavedEvent(programStages, ev, eventsData);
-    return searched;
+    return searchSavedEvent(programStages, ev, eventsData);
   })
 
   const foundConflicts = events.filter(e => e && e.duplicates === true).map(e => {
@@ -1433,13 +1475,4 @@ export const processEvents = (program, data, eventsData) => {
   });
 
   return {eventsUpdate, newEvents, conflicts, errors}
-};
-
-export const partialParamSearch = (search, params) => {
-  const foundParam = _.findIndex(params, v => {
-    return typeof v.value === 'string' && v.value.indexOf(search) !== -1
-  });
-
-  return foundParam !== -1;
-
 };
