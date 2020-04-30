@@ -345,6 +345,8 @@ export const convert = (program, d2) => {
   p.setMappingDescription(program.mappingDescription || '');
   p.setTemplateType(program.templateType || '');
   p.setIncidentDateProvided(program.incidentDateProvided);
+  p.setSelectEnrollmentDatesInFuture(program.selectEnrollmentDatesInFuture || false);
+  p.setSelectIncidentDatesInFuture(program.selectIncidentDatesInFuture || false);
   if (program.sourceOrganisationUnits) {
     const units = program.sourceOrganisationUnits.map(u => {
       const o = new OrganisationUnit(u.id, u.name, u.code);
