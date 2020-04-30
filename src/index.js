@@ -10,17 +10,17 @@ import { Provider } from "mobx-react";
 
 const config = {};
 if (process.env.NODE_ENV === 'development') {
-  config.baseUrl = `http://localhost:8080/api`;
+  // config.baseUrl = `http://localhost:8080/api`;
   // config.baseUrl = 'https://play.dhis2.org/2.30/api'
   // config.baseUrl = 'https://ds.dev.hispuganda.org/api'
   // config.baseUrl = 'https://ds.dev.hispuganda.org/api';
   // config.baseUrl = 'https://programs.psiug.org/psi/api'
   // config.baseUrl = 'https://htm-repo.dev.hispuganda.org/api'
-  // config.baseUrl = 'https://ugandaeidsr.org/api'
-  config.headers = { Authorization: 'Basic YWRtaW46ZGlzdHJpY3Q=' }; // admin
+  config.baseUrl = 'https://eidsr.health.go.ug/api'
+  // config.headers = { Authorization: 'Basic YWRtaW46ZGlzdHJpY3Q=' }; // admin
   // config.headers = { Authorization: 'Basic SGlzcDpBcGlAMjAxOSE=' };// dev pace
   // config.headers = { Authorization: 'Basic aW1wb3J0ZXI6SW1wb3J0ZXIzMjEk' };// Stephen
-  // config.headers = { Authorization: 'Basic Q2hhcmxlcy5PbHVwb3Q6RGhpc0AyMDIw' };// eidsr
+  config.headers = { Authorization: 'Basic Q2hhcmxlcy5PbHVwb3Q6RGhpc0AyMDIw' };// eidsr
   // config.baseUrl = `http://dhis2-staging.kuunika.org:8087/api`;
   // config.headers = { Authorization: 'Basic bWJvbmdlbmljaGl6b25kYTpBYmlreWwyMkA=' };
   // config.headers = { Authorization: 'Basic c3RlcGhlbjpIaXNwQDIwMTk=' };

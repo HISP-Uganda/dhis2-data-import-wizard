@@ -358,6 +358,8 @@ class Program {
       param = encodeData(this.params);
     }
 
+    this.setDataSource('api')
+
     if (this.url) {
       this.openDialog();
       try {
@@ -1020,34 +1022,28 @@ class Program {
             }];
           });
         }
-
-        if (importSummaries) {
-
-        }
       } else if (response['httpStatusCode'] === 409) {
-        console.log(response);
-        // const { message, importSummaries } = response['response'];
-        // if (importSummaries) {
+        const {message, importSummaries} = response['response'];
+        if (importSummaries) {
+          _.forEach(importSummaries, (s) => {
+            _.forEach(s['conflicts'], (conflict) => {
+              conflicts = [...conflicts, {
+                ...conflict
+              }];
+            });
+            if (s['href']) {
+              successes = [...successes, {
+                href: s['href']
+              }];
+            }
+          });
+        }
 
-        //     _.forEach(importSummaries, (s) => {
-        //         _.forEach(s['conflicts'], (conflict) => {
-        //             conflicts = [...conflicts, {
-        //                 ...conflict
-        //             }];
-        //         });
-        //         if (s['href']) {
-        //             successes = [...successes, {
-        //                 href: s['href']
-        //             }];
-        //         }
-        //     });
-        // }
-
-        // if (message) {
-        //     conflicts = [...conflicts, {
-        //         message
-        //     }];
-        // }
+        if (message) {
+          conflicts = [...conflicts, {
+            message
+          }];
+        }
       } else if (response['httpStatusCode'] === 500) {
         errors = [...errors, {
           ...response['error']

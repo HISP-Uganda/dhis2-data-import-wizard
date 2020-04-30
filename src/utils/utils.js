@@ -821,7 +821,12 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
             if (coordinate) {
               event = {
                 ...event,
-                coordinate
+                coordinate,
+                geometry: {
+                  type: 'Point',
+                  coordinate,
+                  coordinates: [coordinate.longitude, coordinate.latitude]
+                }
               }
             }
 
@@ -1436,7 +1441,12 @@ export const processEvents = (program, data, eventsData) => {
       if (coordinate) {
         event = {
           ...event,
-          coordinate
+          coordinate,
+          geometry: {
+            type: 'Point',
+            coordinate,
+            coordinates: [coordinate.longitude, coordinate.latitude]
+          }
         }
       }
       if (stage.completeEvents) {
