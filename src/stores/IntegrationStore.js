@@ -109,6 +109,8 @@ class IntegrationStore {
 
   };
 
+  @observable programsSchedules = []
+
   @action setDialogOpen = val => this.dialogOpen = val;
   @action setTotalDataSets = val => this.totalDataSets = val;
   @action setTotalPrograms = val => this.totalPrograms = val;
@@ -595,6 +597,12 @@ class IntegrationStore {
       NotificationManager.error(`Could not save schedule ${e.message}`, 'Error', 5000);
     }
   };
+
+  @action allPrograms = async () => {
+    const api = this.d2.Api.getApi();
+    const {programs} = await api.get(`programs.json`, {fields: 'id,name', paging: 'false'});
+    this.programsSchedules = programs
+  }
 
   @action
   fetchPrograms = async () => {
@@ -1219,6 +1227,10 @@ class IntegrationStore {
         return v.url && v.url !== '';
       }).map(m => {
         return {label: m.mappingName, value: m.canBeSaved}
+      })
+    } else if (this.currentSchedule.type === 'attributes') {
+      return this.programsSchedules.map(m => {
+        return {label: m.name, value: m.id}
       })
     }
     return [];
