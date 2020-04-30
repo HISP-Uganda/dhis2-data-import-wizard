@@ -155,6 +155,9 @@ class Program {
   @observable data;
   @observable isUploadingFromPage;
 
+  @observable selectIncidentDatesInFuture;
+  @observable selectEnrollmentDatesInFuture;
+
   constructor(lastUpdated, name, id, programType, displayName, programStages, programTrackedEntityAttributes) {
     this.lastUpdated = lastUpdated;
     this.name = name;
@@ -449,6 +452,8 @@ class Program {
   @action setMessage = val => this.message = val;
   @action setIsUploadingFromPage = val => this.isUploadingFromPage = val;
   @action setCategoryCombo = val => this.categoryCombo = val;
+  @action setSelectIncidentDatesInFuture = val => this.selectIncidentDatesInFuture = val;
+  @action setSelectEnrollmentDatesInFuture = val => this.selectEnrollmentDatesInFuture = val;
   @action setSelectedSheet = async val => {
     this.selectedSheet = val;
     if (val) {
