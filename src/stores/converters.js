@@ -347,6 +347,7 @@ export const convert = (program, d2) => {
   p.setIncidentDateProvided(program.incidentDateProvided);
   p.setSelectEnrollmentDatesInFuture(program.selectEnrollmentDatesInFuture || false);
   p.setSelectIncidentDatesInFuture(program.selectIncidentDatesInFuture || false);
+  p.setDataSource(program.dataSource);
   if (program.sourceOrganisationUnits) {
     const units = program.sourceOrganisationUnits.map(u => {
       const o = new OrganisationUnit(u.id, u.name, u.code);
