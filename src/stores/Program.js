@@ -1,21 +1,13 @@
-import {
-  action,
-  computed,
-  observable
-} from 'mobx';
+import {action, computed, observable} from 'mobx';
 import _ from 'lodash';
 import moment from 'moment';
 
-import {
-  NotificationManager
-} from 'react-notifications';
+import {NotificationManager} from 'react-notifications';
 
 import XLSX from 'xlsx';
 
 import axios from 'axios';
-import {
-  encodeData, groupEntities, isTracker, programUniqueAttribute, programUniqueColumn
-} from "../utils/utils";
+import {encodeData, groupEntities, isTracker, programUniqueAttribute, programUniqueColumn} from "../utils/utils";
 import Param from "./Param";
 import OrganisationUnit from "./OrganisationUnit";
 
@@ -509,24 +501,22 @@ class Program {
       if (this.uniqueIds.length > 0) {
         const chunked = _.chunk(this.uniqueIds, 100);
         for (const ch of chunked) {
-          let {rows} = await api.get('trackedEntityInstances/query.json', {
-            // program: this.id,
+          let {trackedEntityInstances: data} = await api.get('trackedEntityInstances.json', {
             filter: `${this.uniqueAttribute}:IN:${ch.join(';')}`,
-            ouMode: 'ALL'
+            ouMode: 'ALL',
+            fields: 'trackedEntityInstance'
           });
-          if (rows.length > 0) {
-            const instances = rows.map(r => r[0]).join(';');
-            const params = {
-              paging: false,
-              ouMode: 'ALL',
-              trackedEntityInstance: instances,
-              fields: 'trackedEntityInstance,orgUnit,attributes[attribute,value],enrollments[enrollment,program,' +
-                'trackedEntityInstance,trackedEntityType,trackedEntity,enrollmentDate,incidentDate,orgUnit,events[program,trackedEntityInstance,event,' +
-                'eventDate,status,completedDate,coordinate,programStage,orgUnit,dataValues[dataElement,value]]]'
-            };
-            const {trackedEntityInstances} = await api.get('trackedEntityInstances', params);
-            foundEntities = [...foundEntities, ...trackedEntityInstances];
-          }
+          const instances = data.map(r => r.trackedEntityInstance).join(';');
+          const params = {
+            paging: false,
+            ouMode: 'ALL',
+            trackedEntityInstance: instances,
+            fields: 'trackedEntityInstance,orgUnit,attributes[attribute,value],enrollments[enrollment,program,' +
+              'trackedEntityInstance,trackedEntityType,trackedEntity,enrollmentDate,incidentDate,orgUnit,events[program,trackedEntityInstance,event,' +
+              'eventDate,status,completedDate,coordinate,programStage,orgUnit,dataValues[dataElement,value]]]'
+          };
+          const {trackedEntityInstances} = await api.get('trackedEntityInstances', params);
+          foundEntities = [...foundEntities, ...trackedEntityInstances];
         }
         return foundEntities;
       }
