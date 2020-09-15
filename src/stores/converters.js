@@ -26,47 +26,48 @@ export const makeCategoryCombo = (val) => {
     categoryCombo.setCode(val.categoryCombo.code);
     categoryCombo.setName(val.categoryCombo.name);
 
-    const categories = val.categoryCombo.categories.filter(c => c.name !== 'default').map(c => {
-      const category = new Category(c.id, c.name, c.code);
+    const categories = val.categoryCombo.categories
+      .filter((c) => c.name !== "default")
+      .map((c) => {
+        const category = new Category(c.id, c.name, c.code);
 
-      if (c.mapping) {
-        category.setMapping(c.mapping);
+        if (c.mapping) {
+          category.setMapping(c.mapping);
+        }
+
+        const categoryOptions = c.categoryOptions.map((co) => {
+          return new CategoryOption(co.id, co.name, co.code);
+        });
+
+        category.setCategoryOptions(categoryOptions);
+
+        return category;
+      });
+
+    const dateSetCategoryOptionCombos = val.categoryCombo.categoryOptionCombos.map(
+      (coc) => {
+        const categoryOptionCombo = new CategoryOptionCombo();
+        categoryOptionCombo.setId(coc.id);
+        categoryOptionCombo.setName(coc.name);
+
+        const categoryOptions = coc.categoryOptions.map((co) => {
+          return new CategoryOption(co.id, co.name, co.code);
+        });
+        categoryOptionCombo.setCategoryOptions(categoryOptions);
+        return categoryOptionCombo;
       }
-
-
-      const categoryOptions = c.categoryOptions.map(co => {
-        return new CategoryOption(co.id, co.name, co.code);
-      });
-
-      category.setCategoryOptions(categoryOptions);
-
-      return category
-
-    });
-
-    const dateSetCategoryOptionCombos = val.categoryCombo.categoryOptionCombos.map(coc => {
-      const categoryOptionCombo = new CategoryOptionCombo();
-      categoryOptionCombo.setId(coc.id);
-      categoryOptionCombo.setName(coc.name);
-
-      const categoryOptions = coc.categoryOptions.map(co => {
-        return new CategoryOption(co.id, co.name, co.code);
-      });
-      categoryOptionCombo.setCategoryOptions(categoryOptions);
-      return categoryOptionCombo;
-    });
+    );
 
     categoryCombo.setCategoryOptionCombos(dateSetCategoryOptionCombos);
     categoryCombo.setCategories(categories);
 
-    return categoryCombo
+    return categoryCombo;
   }
   return null;
-}
+};
 
 export const convertAggregate = (ds, d2) => {
-
-  const grouped = _.groupBy(ds.dataValues, 'dataElement');
+  const grouped = _.groupBy(ds.dataValues, "dataElement");
 
   const dataSet = new DataSet();
 
@@ -74,36 +75,37 @@ export const convertAggregate = (ds, d2) => {
 
   dataSet.setCategoryCombo(dateSetCategoryCombo);
 
-  const forms = ds.forms.map(form => {
-
+  const forms = ds.forms.map((form) => {
     const f = new Form();
-    const dataElements = form.dataElements.slice().sort((a, b) => {
-      const nameA = a.name.toUpperCase();
-      const nameB = b.name.toUpperCase();
-      if (nameA < nameB) {
-        return -1;
-      }
-      if (nameA > nameB) {
-        return 1;
-      }
-      return 0;
-    }).map(de => {
-      const dataElement = new Element();
-      dataElement.setId(de.id);
-      dataElement.setCode(de.code);
-      dataElement.setName(de.name);
-      dataElement.setValueType(de.valueType);
-      dataElement.setMapping(de.mapping);
-      return dataElement;
-    });
+    const dataElements = form.dataElements
+      .slice()
+      .sort((a, b) => {
+        const nameA = a.name.toUpperCase();
+        const nameB = b.name.toUpperCase();
+        if (nameA < nameB) {
+          return -1;
+        }
+        if (nameA > nameB) {
+          return 1;
+        }
+        return 0;
+      })
+      .map((de) => {
+        const dataElement = new Element();
+        dataElement.setId(de.id);
+        dataElement.setCode(de.code);
+        dataElement.setName(de.name);
+        dataElement.setValueType(de.valueType);
+        dataElement.setMapping(de.mapping);
+        return dataElement;
+      });
 
+    const cocs = grouped[form.dataElements[0]["id"]];
 
-    const cocs = grouped[form.dataElements[0]['id']];
+    const groupedOption = _.groupBy(form.categoryOptionCombos, "id");
 
-    const groupedOption = _.groupBy(form.categoryOptionCombos, 'id');
-
-    let categoryOptionCombos = cocs.map(coc => {
-      const found = groupedOption[coc['categoryOptionCombo']];
+    let categoryOptionCombos = cocs.map((coc) => {
+      const found = groupedOption[coc["categoryOptionCombo"]];
       const categoryOptionCombo = new CategoryOptionCombo();
 
       if (found) {
@@ -114,7 +116,6 @@ export const convertAggregate = (ds, d2) => {
         categoryOptionCombo.setColumn(found[0].column || {});
       }
       return categoryOptionCombo;
-
     });
 
     f.setCategoryOptionCombos(categoryOptionCombos);
@@ -122,7 +123,6 @@ export const convertAggregate = (ds, d2) => {
     f.setName(form.name);
 
     return f;
-
   });
 
   dataSet.setForms(forms);
@@ -146,10 +146,10 @@ export const convertAggregate = (ds, d2) => {
   dataSet.setDataStartRow(ds.dataStartRow || 2);
   dataSet.setPeriod(ds.period);
   dataSet.setAggregateId(ds.aggregateId || 1);
-  dataSet.setUsername(ds.username || '');
-  dataSet.setPassword(ds.password || '');
-  dataSet.setResponseKey(ds.responseKey || '');
-  dataSet.setProxy(ds.proxy || '');
+  dataSet.setUsername(ds.username || "");
+  dataSet.setPassword(ds.password || "");
+  dataSet.setResponseKey(ds.responseKey || "");
+  dataSet.setProxy(ds.proxy || "");
   dataSet.setUseProxy(ds.useProxy);
   dataSet.proIndicators = ds.proIndicators;
   dataSet.dataIndicators = ds.dataIndicators;
@@ -157,7 +157,7 @@ export const convertAggregate = (ds, d2) => {
   dataSet.selectedPeriods = ds.selectedPeriods || [];
 
   if (ds.params) {
-    const params = ds.params.map(p => {
+    const params = ds.params.map((p) => {
       const param = new Param();
       param.setParam(p.param);
       param.setValue(p.value);
@@ -168,19 +168,19 @@ export const convertAggregate = (ds, d2) => {
     dataSet.setParams(params);
   }
 
-  const ous = ds.organisationUnits.map(ou => {
-    return new OrganisationUnit(ou.id, ou.name, ou.code)
+  const ous = ds.organisationUnits.map((ou) => {
+    return new OrganisationUnit(ou.id, ou.name, ou.code);
   });
 
   let sourceOus = [];
 
   if (ds.sourceOrganisationUnits) {
-    sourceOus = ds.sourceOrganisationUnits.map(ou => {
+    sourceOus = ds.sourceOrganisationUnits.map((ou) => {
       const o = new OrganisationUnit(ou.id, ou.name, ou.code);
       if (ou.mapping) {
         o.setMapping(ou.mapping);
       }
-      return o
+      return o;
     });
   }
   dataSet.setOrganisationUnits(ous);
@@ -189,13 +189,13 @@ export const convertAggregate = (ds, d2) => {
   dataSet.setPeriod(ds.period);
   dataSet.setOrganisationCell(ds.organisationCell);
   dataSet.setDataStartColumn(ds.dataStartColumn);
-  dataSet.setUrl(ds.url || '');
+  dataSet.setUrl(ds.url || "");
   dataSet.setTemplateType(ds.templateType);
   dataSet.setCell2(ds.cell2 || {});
   dataSet.setIsDhis2(ds.isDhis2);
   dataSet.setTemplate(ds.template || 0);
-  dataSet.setMappingName(ds.mappingName || '');
-  dataSet.setMappingDescription(ds.mappingDescription || '');
+  dataSet.setMappingName(ds.mappingName || "");
+  dataSet.setMappingDescription(ds.mappingDescription || "");
   dataSet.setCompleteDataSet(ds.completeDataSet);
   dataSet.setSourceOrganisationUnits(sourceOus);
   dataSet.setSelectedIndicators(ds.selectedIndicators || []);
@@ -207,7 +207,7 @@ export const convertAggregate = (ds, d2) => {
   }
 
   if (ds.sourceOrganisationUnits) {
-    const units = ds.sourceOrganisationUnits.map(u => {
+    const units = ds.sourceOrganisationUnits.map((u) => {
       const o = new OrganisationUnit(u.id, u.name, u.code);
       o.setMapping(u.mapping);
       return o;
@@ -216,24 +216,23 @@ export const convertAggregate = (ds, d2) => {
   }
 
   return dataSet;
-
 };
 
-
 export const convert = (program, d2) => {
-  const programStages = program.programStages.map(ps => {
-    const programStageDataElements = ps.programStageDataElements.map(psd => {
+  const programStages = program.programStages.map((ps) => {
+    const programStageDataElements = ps.programStageDataElements.map((psd) => {
       let optionSet = null;
       if (psd.dataElement.optionSet) {
-        const options = psd.dataElement.optionSet.options.map(o => {
+        const options = psd.dataElement.optionSet.options.map((o) => {
           const option = new Option(o.code, o.name);
-          option.setValue(o.value || '');
+          option.setValue(o.value || "");
           return option;
         });
-        optionSet = new OptionSet(options)
+        optionSet = new OptionSet(options);
       }
 
-      const dataElement = new DataElement(psd.dataElement.id,
+      const dataElement = new DataElement(
+        psd.dataElement.id,
         psd.dataElement.code,
         psd.dataElement.name,
         psd.dataElement.displayName,
@@ -241,7 +240,10 @@ export const convert = (program, d2) => {
         optionSet
       );
       dataElement.setAsIdentifier(psd.dataElement.identifiesEvent);
-      const programStageDataElement = new ProgramStageDataElement(psd.compulsory, dataElement);
+      const programStageDataElement = new ProgramStageDataElement(
+        psd.compulsory,
+        dataElement
+      );
       if (psd.column) {
         programStageDataElement.setColumn(psd.column);
       }
@@ -265,36 +267,38 @@ export const convert = (program, d2) => {
     return programStage;
   });
 
-  const programTrackedEntityAttributes = program.programTrackedEntityAttributes.map(pa => {
-    let optionSet = null;
-    if (pa.trackedEntityAttribute.optionSet) {
-      const options = pa.trackedEntityAttribute.optionSet.options.map(o => {
-        const option = new Option(o.code, o.name);
-        option.setValue(o.value || null);
-        return option
-      });
-      optionSet = new OptionSet(options);
-    }
+  const programTrackedEntityAttributes = program.programTrackedEntityAttributes.map(
+    (pa) => {
+      let optionSet = null;
+      if (pa.trackedEntityAttribute.optionSet) {
+        const options = pa.trackedEntityAttribute.optionSet.options.map((o) => {
+          const option = new Option(o.code, o.name);
+          option.setValue(o.value || null);
+          return option;
+        });
+        optionSet = new OptionSet(options);
+      }
 
-    const trackedEntityAttribute = new TrackedEntityAttribute(
-      pa.trackedEntityAttribute.id,
-      pa.trackedEntityAttribute.code,
-      pa.trackedEntityAttribute.name,
-      pa.trackedEntityAttribute.displayName,
-      pa.trackedEntityAttribute.unique,
-      optionSet
-    );
+      const trackedEntityAttribute = new TrackedEntityAttribute(
+        pa.trackedEntityAttribute.id,
+        pa.trackedEntityAttribute.code,
+        pa.trackedEntityAttribute.name,
+        pa.trackedEntityAttribute.displayName,
+        pa.trackedEntityAttribute.unique,
+        optionSet
+      );
 
-    const programTrackedEntityAttribute = new ProgramTrackedEntityAttribute(
-      pa.valueType,
-      pa.mandatory,
-      trackedEntityAttribute
-    );
-    if (pa.column) {
-      programTrackedEntityAttribute.setColumn(pa.column);
+      const programTrackedEntityAttribute = new ProgramTrackedEntityAttribute(
+        pa.valueType,
+        pa.mandatory,
+        trackedEntityAttribute
+      );
+      if (pa.column) {
+        programTrackedEntityAttribute.setColumn(pa.column);
+      }
+      return programTrackedEntityAttribute;
     }
-    return programTrackedEntityAttribute;
-  });
+  );
   const programCategoryCombo = makeCategoryCombo(program);
   const p = new Program(
     program.lastUpdated,
@@ -311,9 +315,9 @@ export const convert = (program, d2) => {
   p.setOrganisationUnits(program.organisationUnits);
 
   if (program.trackedEntityType && program.trackedEntityType.id) {
-    p.setTrackedEntityType(new TrackedEntityType(program.trackedEntityType.id))
+    p.setTrackedEntityType(new TrackedEntityType(program.trackedEntityType.id));
   } else if (program.trackedEntity && program.trackedEntity) {
-    p.setTrackedEntity(new TrackedEntityType(program.trackedEntity.id))
+    p.setTrackedEntity(new TrackedEntityType(program.trackedEntity.id));
   }
 
   p.setD2(d2);
@@ -327,8 +331,8 @@ export const convert = (program, d2) => {
   p.setUpdateEntities(program.updateEntities);
   p.setEnrollmentDateColumn(program.enrollmentDateColumn);
   p.setIncidentDateColumn(program.incidentDateColumn);
-  p.setUrl(program.url || '');
-  p.setDateFilter(program.dateFilter || '');
+  p.setUrl(program.url || "");
+  p.setDateFilter(program.dateFilter || "");
   p.setLastRun(program.lastRun);
   p.setUploaded(program.uploaded);
   p.setUploadMessage(program.uploadMessage);
@@ -336,32 +340,43 @@ export const convert = (program, d2) => {
   p.setMappingId(program.mappingId);
   p.setLatitudeColumn(program.latitudeColumn);
   p.setLongitudeColumn(program.longitudeColumn);
-  p.setDateEndFilter(program.dateEndFilter || '');
+  p.setDateEndFilter(program.dateEndFilter || "");
   p.setScheduleTime(program.scheduleTime || 0);
   // p.setSelectedSheet(program.selectedSheet);
   p.setErrors([]);
   p.setConflicts([]);
-  p.setMappingName(program.mappingName || '');
-  p.setMappingDescription(program.mappingDescription || '');
-  p.setTemplateType(program.templateType || '');
+  p.setMappingName(program.mappingName || "");
+  p.setMappingDescription(program.mappingDescription || "");
+  p.setTemplateType(program.templateType || "");
   p.setIncidentDateProvided(program.incidentDateProvided);
-  p.setSelectEnrollmentDatesInFuture(program.selectEnrollmentDatesInFuture || false);
-  p.setSelectIncidentDatesInFuture(program.selectIncidentDatesInFuture || false);
+  p.setSelectEnrollmentDatesInFuture(
+    program.selectEnrollmentDatesInFuture || false
+  );
+  p.setSelectIncidentDatesInFuture(
+    program.selectIncidentDatesInFuture || false
+  );
   p.setDataSource(program.dataSource);
+  p.setPassword(program.password);
+  p.setUsername(program.username);
+  p.isDHIS2 = program.isDHIS2 || false;
+  p.remoteId = program.remoteId || "";
+  p.trackedEntityInstances = program.trackedEntityInstances || false;
+  p.enrollments = program.enrollments || false;
+  p.events = program.events || false;
+  p.remoteStage = program.remoteStage;
+  p.remoteProgram = program.remoteProgram;
+
   if (program.sourceOrganisationUnits) {
-    const units = program.sourceOrganisationUnits.map(u => {
+    const units = program.sourceOrganisationUnits.map((u) => {
       const o = new OrganisationUnit(u.id, u.name, u.code);
       o.setMapping(u.mapping);
-
       return o;
     });
-
     p.setSourceOrganisationUnit(units);
-
   }
 
   if (program.params) {
-    const params = program.params.map(p => {
+    const params = program.params.map((p) => {
       const param = new Param();
       param.setParam(p.param);
       param.setValue(p.value);
@@ -370,13 +385,11 @@ export const convert = (program, d2) => {
 
       return param;
     });
-
     p.setParams(params);
   }
 
   return p;
 };
-
 
 export const convertSchedule = (schedule) => {
   const sc = new Schedule();
@@ -392,11 +405,11 @@ export const convertSchedule = (schedule) => {
   return sc;
 };
 
-export const convertSchedules = schedules => {
-  return schedules.map(s => convertSchedule(s));
+export const convertSchedules = (schedules) => {
+  return schedules.map((s) => convertSchedule(s));
 };
 
-export const createParam = val => {
+export const createParam = (val) => {
   const param = new Param();
 
   param.setParam(val.param);
