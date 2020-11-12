@@ -187,11 +187,11 @@ export const processDataSet = (data, dataSet) => {
                       ...dataValues,
                       {
                         dataElement,
-                        value: d["value"],
                         period: d["period"],
-                        attributeOptionCombo: attribute.id,
-                        categoryOptionCombo: coc.id,
                         orgUnit: orgUnit.mapping.value,
+                        categoryOptionCombo: coc.id,
+                        attributeOptionCombo: attribute.id,
+                        value: d["value"],
                       },
                     ];
                   } else {
@@ -249,9 +249,7 @@ export const processDataSet = (data, dataSet) => {
                   ];
                 }
               }
-
               let found;
-
               if (attributeCombosInExcel) {
                 const rowData = categoryCombo.categories.map((category) => {
                   const value = data[category.mapping.value];
@@ -269,11 +267,11 @@ export const processDataSet = (data, dataSet) => {
                   ...dataValues,
                   {
                     dataElement,
-                    value: data[mapping.value]["v"],
-                    categoryOptionCombo: coc.id,
                     period,
-                    attributeOptionCombo: found.id,
                     orgUnit,
+                    categoryOptionCombo: coc.id,
+                    attributeOptionCombo: found.id,
+                    value: data[mapping.value]["v"],
                   },
                 ];
               } else {
@@ -292,37 +290,37 @@ export const processDataSet = (data, dataSet) => {
                 return mapping && mapping.value && v.dx === mapping.value;
               });
               filtered.forEach((d) => {
-                const attribute = findAttributeCombo(categoryCombo, []);
-                if (attribute) {
-                  const orgUnit = units[d["ou"]];
-                  if (orgUnit) {
-                    dataValues = [
-                      ...dataValues,
-                      {
-                        dataElement,
-                        value: d["value"],
-                        period: d["pe"],
-                        attributeOptionCombo: attribute.id,
-                        categoryOptionCombo: coc.id,
-                        orgUnit,
-                      },
-                    ];
-                  } else {
-                    errors = [
-                      ...errors,
-                      {
-                        error: `Organisation ${d["ou"]} not found`,
-                      },
-                    ];
-                  }
+                // const attribute = findAttributeCombo(categoryCombo, []);
+                // if (attribute) {
+                const orgUnit = units[d["ou"]];
+                if (orgUnit) {
+                  dataValues = [
+                    ...dataValues,
+                    {
+                      dataElement,
+                      period: d["pe"],
+                      orgUnit,
+                      categoryOptionCombo: coc.id,
+                      attributeOptionCombo: "Lf2Axb9E6B4",
+                      value: d["value"],
+                    },
+                  ];
                 } else {
                   errors = [
                     ...errors,
                     {
-                      error: `Attribute with value not found`,
+                      error: `Organisation ${d["ou"]} not found`,
                     },
                   ];
                 }
+                // } else {
+                //   errors = [
+                //     ...errors,
+                //     {
+                //       error: `Attribute with value not found`,
+                //     },
+                //   ];
+                // }
               });
             });
           }
@@ -360,12 +358,12 @@ export const processDataSet = (data, dataSet) => {
               dataValues = [
                 ...dataValues,
                 {
-                  orgUnit: orgUnit.mapping.value,
-                  period,
-                  value,
                   dataElement: v.value.dataElement,
-                  attributeOptionCombo: found.id,
+                  period,
+                  orgUnit: orgUnit.mapping.value,
                   categoryOptionCombo: v.value.categoryOptionCombo,
+                  attributeOptionCombo: found.id,
+                  value,
                 },
               ];
             } else {
@@ -449,11 +447,12 @@ export const processDataSet = (data, dataSet) => {
           }
           const { value, period } = f;
           return {
-            orgUnit,
-            value,
-            period,
             dataElement,
+            period,
+            orgUnit,
             categoryOptionCombo,
+            attributeOptionCombo: "Lf2Axb9E6B4",
+            value,
           };
         })
         .filter((v) => !!v.orgUnit);

@@ -21,8 +21,6 @@ class Element {
   @action setMapping = val => this.mapping = val;
   @action setUniqueCategoryOptionCombos = val => this.uniqueCategoryOptionCombos = val;
   @action setValueType = val => this.valueType = val;
-
-
   @action handelMappingChange = (currentData, cocColumn, isDhis2) => val => {
     this.setMapping(val);
     if (!isDhis2 && !_.isEmpty(currentData)) {

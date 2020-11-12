@@ -684,6 +684,136 @@ class Program {
     }
   };
 
+  @action insertData = async (openDialog = true) => {
+    if (openDialog) {
+      this.openDialog();
+    }
+    const {
+      newTrackedEntityInstances,
+      newEnrollments,
+      newEvents,
+      trackedEntityInstancesUpdate,
+      eventsUpdate,
+    } = this.processed;
+    try {
+      if (newTrackedEntityInstances && newTrackedEntityInstances.length > 0) {
+        const chunkedTEI = _.chunk(newTrackedEntityInstances, 100);
+        const total = newTrackedEntityInstances.length;
+        let current = 0;
+        this.setMessage(`Creating tracked entities ${current}/${total}`);
+
+        for (const tei of chunkedTEI) {
+          current = current + tei.length;
+          this.setMessage(`Creating tracked entities ${current}/${total}`);
+          try {
+            const instancesResults = await this.insertTrackedEntityInstance({
+              trackedEntityInstances: tei,
+            });
+            instancesResults.type = "trackedEntityInstance";
+            this.setResponses(instancesResults);
+          } catch (error) {}
+        }
+        this.setMessage("Finished creating tracked entities");
+      }
+
+      if (
+        trackedEntityInstancesUpdate &&
+        trackedEntityInstancesUpdate.length > 0
+      ) {
+        const total = trackedEntityInstancesUpdate.length;
+        let current = 0;
+        this.setMessage(`Updating tracked entities ${current}/${total}`);
+        const chunkedTEI = _.chunk(trackedEntityInstancesUpdate, 100);
+        for (const tei of chunkedTEI) {
+          current = current + tei.length;
+          this.setMessage(`Updating tracked entities ${current}/${total}`);
+          try {
+            const instancesResults = await this.insertTrackedEntityInstance({
+              trackedEntityInstances: tei,
+            });
+            instancesResults.type = "trackedEntityInstance";
+            this.setResponses(instancesResults);
+          } catch (error) {}
+        }
+
+        this.setMessage("Finished updating tracked entities");
+      }
+
+      if (newEnrollments && newEnrollments.length > 0) {
+        const total = newEnrollments.length;
+        let current = 0;
+        this.setMessage(
+          `Creating enrollments for tracked entities ${current}/${total}`
+        );
+        const chunkedEnrollments = _.chunk(newEnrollments, 100);
+        for (const enrollments of chunkedEnrollments) {
+          current = current + enrollments.length;
+          this.setMessage(
+            `Creating enrollments for tracked entities ${current}/${total}`
+          );
+          try {
+            const enrollmentsResults = await this.insertEnrollment({
+              enrollments: enrollments,
+            });
+            enrollmentsResults.type = "enrollment";
+            this.setResponses(enrollmentsResults);
+          } catch (error) {}
+        }
+        this.setMessage("Finished creating enrollments for tracked entities");
+      }
+
+      if (newEvents && newEvents.length > 0) {
+        const total = newEvents.length;
+        let current = 0;
+        this.setMessage(`Creating events ${current}/${total}`);
+        const chunkedEvents = _.chunk(newEvents, 100);
+
+        for (const events of chunkedEvents) {
+          current = current + events.length;
+          this.setMessage(`Creating events ${current}/${total}`);
+          try {
+            const eventsResults = await this.insertEvent({
+              events,
+            });
+            eventsResults.type = "event";
+            this.setResponses(eventsResults);
+          } catch (error) {}
+        }
+        this.setMessage("Finished creating events");
+      }
+
+      if (eventsUpdate && eventsUpdate.length > 0) {
+        const total = eventsUpdate.length;
+        let current = 0;
+        this.setMessage(`Updating events ${current}/${total}`);
+        const chunkedEvents = _.chunk(eventsUpdate, 100);
+        for (const events of chunkedEvents) {
+          current = current + events.length;
+          this.setMessage(`Updating events ${current}/${total}`);
+          try {
+            const eventsResults = await Promise.all(
+              this.updateDHISEvents(events)
+            );
+            this.setResponses(eventsResults);
+          } catch (error) {}
+        }
+        this.setMessage("Finished updating events");
+      }
+      this.setPulledData(null);
+      this.setWorkbook(null);
+      await this.setSelectedSheet(null);
+      this.setMessage("");
+      if (openDialog) {
+        this.closeDialog();
+      }
+    } catch (e) {
+      this.setResponses(e);
+      if (openDialog) {
+        this.closeDialog();
+      }
+    }
+  };
+
   @action create = async () => {
     if (this.isDHIS2) {
       this.setDataSource("api");
@@ -697,8 +827,6 @@ class Program {
       let tei = [];
       let page = 1;
       this.openDialog();
-
-      // const { data } = await axios.get("http://localhost:3002/data", {});
       do {
         const {
           data: { trackedEntityInstances },
@@ -708,6 +836,7 @@ class Program {
             program: id,
             ouMode: "ALL",
             fields: "*",
+            pageSize: 100,
             page,
           },
           auth: {
@@ -728,7 +857,6 @@ class Program {
                 const currentAttribute = attributes.find(
                   (attr) => ptea.trackedEntityAttribute.id === attr.attribute
                 );
-
                 if (currentAttribute) {
                   return [
                     ptea.trackedEntityAttribute.name,
@@ -779,148 +907,13 @@ class Program {
         );
         this.setData(_.flatten(json));
         await this.process(false);
-        const {
-          newTrackedEntityInstances,
-          newEnrollments,
-          newEvents,
-          trackedEntityInstancesUpdate,
-          eventsUpdate,
-        } = this.processed;
-        console.log(
-          newTrackedEntityInstances.length,
-          newEnrollments.length,
-          newEvents.length,
-          trackedEntityInstancesUpdate.length,
-          eventsUpdate.length
-        );
+        await this.insertData(false);
         tei = trackedEntityInstances;
         page = page + 1;
       } while (tei.length > 0);
       this.closeDialog();
     } else {
-      this.setDisplayProgress(true);
-      this.openDialog();
-      const {
-        newTrackedEntityInstances,
-        newEnrollments,
-        newEvents,
-        trackedEntityInstancesUpdate,
-        eventsUpdate,
-      } = this.processed;
-      try {
-        if (newTrackedEntityInstances && newTrackedEntityInstances.length > 0) {
-          const chunkedTEI = _.chunk(newTrackedEntityInstances, 50);
-          const total = newTrackedEntityInstances.length;
-          let current = 0;
-          this.setMessage(`Creating tracked entities ${current}/${total}`);
-
-          for (const tei of chunkedTEI) {
-            current = current + tei.length;
-            this.setMessage(`Creating tracked entities ${current}/${total}`);
-            try {
-              const instancesResults = await this.insertTrackedEntityInstance({
-                trackedEntityInstances: tei,
-              });
-              instancesResults.type = "trackedEntityInstance";
-              this.setResponses(instancesResults);
-            } catch (error) {}
-          }
-          this.setMessage("Finished creating tracked entities");
-        }
-
-        if (
-          trackedEntityInstancesUpdate &&
-          trackedEntityInstancesUpdate.length > 0
-        ) {
-          const total = trackedEntityInstancesUpdate.length;
-          let current = 0;
-          this.setMessage(`Updating tracked entities ${current}/${total}`);
-          const chunkedTEI = _.chunk(trackedEntityInstancesUpdate, 50);
-          for (const tei of chunkedTEI) {
-            current = current + tei.length;
-            this.setMessage(`Updating tracked entities ${current}/${total}`);
-            try {
-              const instancesResults = await this.insertTrackedEntityInstance({
-                trackedEntityInstances: tei,
-              });
-              instancesResults.type = "trackedEntityInstance";
-              this.setResponses(instancesResults);
-            } catch (error) {}
-          }
-
-          this.setMessage("Finished updating tracked entities");
-        }
-
-        if (newEnrollments && newEnrollments.length > 0) {
-          const total = newEnrollments.length;
-          let current = 0;
-          this.setMessage(
-            `Creating enrollments for tracked entities ${current}/${total}`
-          );
-          const chunkedEnrollments = _.chunk(newEnrollments, 50);
-          for (const enrollments of chunkedEnrollments) {
-            current = current + enrollments.length;
-            this.setMessage(
-              `Creating enrollments for tracked entities ${current}/${total}`
-            );
-            try {
-              const enrollmentsResults = await this.insertEnrollment({
-                enrollments: enrollments,
-              });
-              enrollmentsResults.type = "enrollment";
-              this.setResponses(enrollmentsResults);
-            } catch (error) {}
-          }
-          this.setMessage("Finished creating enrollments for tracked entities");
-        }
-
-        if (newEvents && newEvents.length > 0) {
-          const total = newEvents.length;
-          let current = 0;
-          this.setMessage(`Creating events ${current}/${total}`);
-          const chunkedEvents = _.chunk(newEvents, 50);
-
-          for (const events of chunkedEvents) {
-            current = current + events.length;
-            this.setMessage(`Creating events ${current}/${total}`);
-            try {
-              const eventsResults = await this.insertEvent({
-                events,
-              });
-              eventsResults.type = "event";
-              this.setResponses(eventsResults);
-            } catch (error) {}
-          }
-          this.setMessage("Finished creating events");
-        }
-
-        if (eventsUpdate && eventsUpdate.length > 0) {
-          const total = eventsUpdate.length;
-          let current = 0;
-          this.setMessage(`Updating events ${current}/${total}`);
-          const chunkedEvents = _.chunk(eventsUpdate, 50);
-          for (const events of chunkedEvents) {
-            current = current + events.length;
-            this.setMessage(`Updating events ${current}/${total}`);
-            try {
-              const eventsResults = await Promise.all(
-                this.updateDHISEvents(events)
-              );
-              this.setResponses(eventsResults);
-            } catch (error) {}
-          }
-          this.setMessage("Finished updating events");
-        }
-        this.setPulledData(null);
-        this.setWorkbook(null);
-        await this.setSelectedSheet(null);
-        this.setDisplayProgress(false);
-        this.setMessage("");
-        this.closeDialog();
-      } catch (e) {
-        this.setResponses(e);
-        this.closeDialog();
-      }
+      await this.insertData();
     }
   };
 

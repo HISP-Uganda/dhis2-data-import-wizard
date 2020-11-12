@@ -155,6 +155,7 @@ export const convertAggregate = (ds, d2) => {
   dataSet.dataIndicators = ds.dataIndicators;
   dataSet.dataDataElements = ds.dataDataElements;
   dataSet.selectedPeriods = ds.selectedPeriods || [];
+  dataSet.setAction(ds.action || "upload");
 
   if (ds.params) {
     const params = ds.params.map((p) => {

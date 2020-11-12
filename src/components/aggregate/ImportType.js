@@ -9,6 +9,10 @@ import { inject, observer } from "mobx-react";
 import React from "react";
 import Dropzone from "react-dropzone";
 import Select from "react-select";
+import FormControl from "@material-ui/core/FormControl";
+import FormLabel from "@material-ui/core/FormLabel";
+import RadioGroup from "@material-ui/core/RadioGroup";
+import Radio from "@material-ui/core/Radio";
 import Progress from "../progress";
 import Params from "./Params";
 
@@ -150,6 +154,33 @@ class ImportType extends React.Component {
                 )
               }
             />
+
+            <FormControl component="fieldset">
+              <FormLabel component="legend">Action</FormLabel>
+              <RadioGroup
+                row={true}
+                aria-label="Action"
+                name="action"
+                value={this.integrationStore.dataSet.action}
+                onChange={this.integrationStore.dataSet.changeAction}
+              >
+                <FormControlLabel
+                  value="upload"
+                  control={<Radio />}
+                  label="Upload Directly"
+                />
+                <FormControlLabel
+                  value="csv"
+                  control={<Radio />}
+                  label="Download CSV"
+                />
+                <FormControlLabel
+                  value="json"
+                  control={<Radio />}
+                  label="Download JSON"
+                />
+              </RadioGroup>
+            </FormControl>
             <br />
             <br />
             <Select

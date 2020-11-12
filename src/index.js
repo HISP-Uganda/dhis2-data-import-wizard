@@ -10,9 +10,9 @@ import { Provider } from "mobx-react";
 
 const config = {};
 if (process.env.NODE_ENV === "development") {
-  config.baseUrl = process.env.REACT_APP_ECBSS_URL;
+  config.baseUrl = process.env.REACT_APP_DHIS2_URL;
   config.headers = {
-    Authorization: `Basic ${process.env.REACT_APP_ECBSS_PASS}`,
+    Authorization: `Basic ${process.env.REACT_APP_DHIS2_PASS}`,
   };
 } else {
   let baseUrl;

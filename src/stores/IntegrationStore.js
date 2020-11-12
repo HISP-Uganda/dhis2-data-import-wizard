@@ -1,12 +1,13 @@
-import { action, computed, configure, observable } from "mobx";
-import _ from "lodash";
 import saveAs from "file-saver";
-import { callAxios2, postAxios } from "../utils/data-utils";
-import { convert, convertAggregate, convertSchedules } from "./converters";
+import _ from "lodash";
+import { action, computed, configure, observable } from "mobx";
 import { NotificationManager } from "react-notifications";
-import Schedule from "./Schedule";
+import XLSX from "xlsx";
+import { callAxios2, postAxios } from "../utils/data-utils";
 import { convertDataToURL } from "../utils/utils";
+import { convert, convertAggregate, convertSchedules } from "./converters";
 import Organisation from "./Organisation";
+import Schedule from "./Schedule";
 
 configure({
   enforceActions: "observed",
@@ -125,6 +126,10 @@ class IntegrationStore {
       page: 0,
       rowsPerPage: 10,
     },
+    remote: {
+      page: 0,
+      rowsPerPage: 5,
+    },
   };
 
   @observable programsSchedules = [];
@@ -136,6 +141,7 @@ class IntegrationStore {
   @action closeDialog = () => this.setDialogOpen(false);
   @action openSchedule = () => this.setScheduled(true);
   @action setCurrentSchedule = (val) => (this.currentSchedule = val);
+  @action setNextAggreageteStep = (val) => (this.currentSchedule = val);
 
   @action setOpen = (val) => (this.open = val);
 
@@ -274,6 +280,28 @@ class IntegrationStore {
         `Mapping type does not support API import`,
         "Warning"
       );
+    }
+  };
+
+  downloadSimpleTemplate = (args) => {
+    if (args.templateType.value === "4") {
+      const { cell2 } = args;
+      const values = Object.values(cell2);
+      const processed = values.map(({ value }) => {
+        return {
+          destination: `${value.mapping.dataElement},${value.mapping.categoryOptionCombo}`,
+          source: `${value.dataElement},${value.categoryOptionCombo}`,
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(processed);
+      const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
+      saveAs(
+        new Blob([csvOutput], { type: "application/octet-stream" }),
+        `${String(args.name).slice(0, 30)}.csv`
+      );
+    } else {
+      NotificationManager.warning(`Coming soon`, "Warning");
     }
   };
 
@@ -464,6 +492,27 @@ class IntegrationStore {
   @action
   saveAggregate = async () => {
     await this.dataSet.saveAggregate(this.aggregates);
+  };
+
+  @action
+  downloadOrgUnitMapping = async () => {
+    const mapping = this.dataSet.sourceOrganisationUnits.map((u) => {
+      const destinationName = u.mapping ? u.mapping.label : "";
+      const destinationId = u.mapping ? u.mapping.value : "";
+      return {
+        sourceName: u.name,
+        sourceId: u.id,
+        destinationName,
+        destinationId,
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(mapping);
+    const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
+    saveAs(
+      new Blob([csvOutput], { type: "application/octet-stream" }),
+      `organisation-mapping.csv`
+    );
   };
 
   @action changeSet = (step) => {
@@ -657,10 +706,15 @@ class IntegrationStore {
   };
 
   @action
-  useSavedAggregate = (model) => {
-    this.dataSet = model;
+  useSavedAggregate = async (model) => {
+    const api = this.d2.Api.getApi();
+    const { organisationUnits } = await api.get(`dataSets/${model.id}.json`, {
+      fields: "organisationUnits[id,name,code]",
+    });
+    this.setDataSet(model);
+    this.dataSet.setOrganisationUnits(organisationUnits)
     this.aggregateJump = true;
-    this.activeAggregateStep = this.activeAggregateStep + 2;
+    this.changeAggregateSet(this.activeAggregateStep + 2);
   };
 
   @action getScheduleInfo = async () => {
@@ -783,7 +837,7 @@ class IntegrationStore {
       {
         param: "fields",
         value:
-          "id,name,code,periodType,categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]],dataSetElements[dataElement[id,name,code,valueType,dataSetElements[dataSet,categoryCombo[id,name,isDefault,categoryOptionCombos[id,name]]],categoryCombo[id,name,isDefault,categoryOptionCombos[id,name]]]],organisationUnits[id,name,code],organisationUnits[id,name,code]",
+          "id,name,code,periodType,categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]],dataSetElements[dataElement[id,name,code,valueType,dataSetElements[dataSet,categoryCombo[id,name,isDefault,categoryOptionCombos[id,name]]],categoryCombo[id,name,isDefault,categoryOptionCombos[id,name]]]],organisationUnits[id,name,code]",
       },
       {
         param: "order",
@@ -1396,7 +1450,36 @@ class IntegrationStore {
 
   @computed get sourceUnits() {
     const info = this.paging["d25"];
-    return this.dataSet.sourceOrganisationUnits.slice(
+    return this.dataSet.sourceOrganisationUnits
+      .filter((ou) => {
+        if (this.dataSet.showOnlyUnmappedUnits) {
+          if (this.dataSet.unitsFilter && this.dataSet.unitsFilter !== "") {
+            return (
+              !ou.mapping &&
+              String(ou.name)
+                .toLowerCase()
+                .includes(String(this.dataSet.unitsFilter).toLowerCase())
+            );
+          }
+          return !ou.mapping;
+        }
+
+        if (this.dataSet.unitsFilter && this.dataSet.unitsFilter !== "") {
+          return String(ou.name)
+            .toLowerCase()
+            .includes(String(this.dataSet.unitsFilter).toLowerCase());
+        }
+        return true;
+      })
+      .slice(
+        info.page * info.rowsPerPage,
+        info.page * info.rowsPerPage + info.rowsPerPage
+      );
+  }
+
+  @computed get remoteUnits() {
+    const info = this.paging["remote"];
+    return this.dataSet.remoteOrganisations.slice(
       info.page * info.rowsPerPage,
       info.page * info.rowsPerPage + info.rowsPerPage
     );
@@ -1467,7 +1550,7 @@ class IntegrationStore {
 
   @observable tableAggActions = {
     import: this.uploadAgg,
-    // download: this.importAgg,
+    template1: this.downloadSimpleTemplate,
     template: this.downloadData,
     delete: this.deleteAgg,
   };
