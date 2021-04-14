@@ -142,6 +142,7 @@ class IntegrationStore {
   @action openSchedule = () => this.setScheduled(true);
   @action setCurrentSchedule = (val) => (this.currentSchedule = val);
   @action setNextAggreageteStep = (val) => (this.currentSchedule = val);
+  @action setNext = (val) => this.nex;
 
   @action setOpen = (val) => (this.open = val);
 
@@ -254,8 +255,17 @@ class IntegrationStore {
     this.dataSet.setIsUploadingFromPage(true);
   };
 
-  delete = (args) => {
-    args.deleteMapping(this.mappings);
+  delete = async (args) => {
+    // args.deleteMapping(this.mappings);
+    const api = this.d2.Api.getApi();
+    const namespace = await this.d2.dataStore.get("bridge");
+    namespace.set(
+      "mappings",
+      this.mappings.filter((m) => m.mappingId !== args.mappingId)
+    );
+
+    await api.delete(`dataStore/bridge/${args.mappingId}`);
+    // NotificationManager.success("Success", "Mapping saved successfully", 5000);
   };
 
   deleteAgg = async (args) => {
@@ -389,7 +399,6 @@ class IntegrationStore {
 
   @action downloadAggregateData = () => {
     const dataValues = this.dataSet.processed;
-
     const blob = new Blob([JSON.stringify({ dataValues }, null, 2)], {
       type: "application/json",
     });
@@ -486,7 +495,40 @@ class IntegrationStore {
 
   @action
   saveMapping = async () => {
-    this.program.saveMapping(this.mappings);
+    try {
+      await this.program.saveMapping();
+
+      const { mappingId, mappingName, mappingDescription, id } = this.program;
+      const mapping = _.findIndex(this.mappings, {
+        mappingId: this.program.mappingId,
+      });
+      if (mapping !== -1) {
+        this.mappings.splice(mapping, 1, {
+          mappingId,
+          mappingName,
+          mappingDescription,
+          id,
+        });
+      } else {
+        this.mappings = [
+          ...this.mappings,
+          { mappingId, mappingName, mappingDescription, id },
+        ];
+      }
+      const namespace = await this.d2.dataStore.get("bridge");
+      namespace.set("mappings", this.mappings);
+      NotificationManager.success(
+        "Success",
+        "Mapping saved successfully",
+        5000
+      );
+    } catch (e) {
+      NotificationManager.error(
+        "Error",
+        `Could not save mapping ${e.message}`,
+        5000
+      );
+    }
   };
 
   @action
@@ -604,6 +646,8 @@ class IntegrationStore {
 
   @action
   executeEditIfAllowed = async (model) => {
+    this.openDialog();
+    const api = this.d2.Api.getApi();
     this.jump = false;
     model.createNewEvents = true;
     model.dataStartRow = 2;
@@ -618,16 +662,14 @@ class IntegrationStore {
       label: "Minute",
     };
 
-    this.program = convert(model, this.d2);
-    const maxMapping = _.maxBy(this.mappings, "mappingId");
+    const latestProgram = await api.get(`programs/${model.id}.json`, {
+      fields:
+        "id,name,displayName,lastUpdated,selectIncidentDatesInFuture,selectEnrollmentDatesInFuture,programType,trackedEntityType,trackedEntity,programTrackedEntityAttributes[mandatory,valueType,trackedEntityAttribute[id,code,name,displayName,unique,optionSetValue,optionSet[options[name,code]]]],programStages[id,name,displayName,repeatable,programStageDataElements[compulsory,dataElement[id,code,valueType,name,displayName,optionSetValue,optionSet[options[name,code]]]]],organisationUnits[id,code,name],categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]]",
+    });
 
-    if (maxMapping) {
-      this.program.setMappingId(maxMapping.mappingId + 1);
-    } else {
-      this.program.setMappingId(1);
-    }
-
+    this.program = convert({}, this.d2, latestProgram);
     await this.handleNext();
+    this.closeDialog();
   };
 
   @action
@@ -699,10 +741,20 @@ class IntegrationStore {
   };
 
   @action
-  useSaved = (model) => {
-    this.program = model;
+  useSaved = async (model) => {
+    this.openDialog();
+    const api = this.d2.Api.getApi();
+    const [latestProgram, mapping] = await Promise.all([
+      api.get(`programs/${model.id}.json`, {
+        fields:
+          "id,name,displayName,lastUpdated,selectIncidentDatesInFuture,selectEnrollmentDatesInFuture,programType,trackedEntityType,trackedEntity,programTrackedEntityAttributes[mandatory,valueType,trackedEntityAttribute[id,code,name,displayName,unique,optionSetValue,optionSet[options[name,code]]]],programStages[id,name,displayName,repeatable,programStageDataElements[compulsory,dataElement[id,code,valueType,name,displayName,optionSetValue,optionSet[options[name,code]]]]],organisationUnits[id,code,name],categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]]",
+      }),
+      api.get(`dataStore/bridge/${model.mappingId}.json`),
+    ]);
+    this.setProgram(convert(mapping, this.d2, latestProgram));
     this.jump = true;
-    this.activeStep = this.activeStep + 2;
+    this.changeSet(this.activeStep + 2);
+    this.closeDialog();
   };
 
   @action
@@ -712,7 +764,7 @@ class IntegrationStore {
       fields: "organisationUnits[id,name,code]",
     });
     this.setDataSet(model);
-    this.dataSet.setOrganisationUnits(organisationUnits)
+    this.dataSet.setOrganisationUnits(organisationUnits);
     this.aggregateJump = true;
     this.changeAggregateSet(this.activeAggregateStep + 2);
   };
@@ -772,8 +824,7 @@ class IntegrationStore {
       },
       {
         param: "fields",
-        value:
-          "id,name,displayName,lastUpdated,selectIncidentDatesInFuture,selectEnrollmentDatesInFuture,programType,trackedEntityType,trackedEntity,programTrackedEntityAttributes[mandatory,valueType,trackedEntityAttribute[id,code,name,displayName,unique,optionSet[options[name,code]]]],programStages[id,name,displayName,repeatable,programStageDataElements[compulsory,dataElement[id,code,valueType,name,displayName,optionSet[options[name,code]]]]],organisationUnits[id,code,name],categoryCombo[id,name,categories[id,name,code,categoryOptions[id,name,code]],categoryOptionCombos[id,name,categoryOptions[id,name]]]",
+        value: "id,name,displayName,lastUpdated,programType",
       },
       {
         param: "order",
@@ -991,13 +1042,37 @@ class IntegrationStore {
     try {
       const namespace = await this.d2.dataStore.get("bridge");
       const mappings = await namespace.get("mappings");
-      const processedMappings = mappings.map((m) => {
-        return convert(m, this.d2);
-      });
-      this.setMappings(processedMappings);
+      const otherKeys = namespace.keys.filter((ns) => ns !== "mappings");
+      const allMappingKeys = mappings.map((m) => m.mappingId);
+      let found = false;
+      for (const mks of allMappingKeys) {
+        if (otherKeys.findIndex((key) => String(key) === String(mks)) === -1) {
+          namespace.set(
+            mks,
+            mappings.find((nm) => nm.mappingId === mks)
+          );
+          found = true;
+        }
+      }
+
+      if (found) {
+        const processedMappings = mappings.map(
+          ({ mappingId, mappingName, mappingDescription, id }) => {
+            return { mappingId, mappingName, mappingDescription, id };
+          }
+        );
+        namespace.set("mappings", processedMappings);
+        this.setMappings(processedMappings);
+      } else {
+        this.setMappings(mappings);
+      }
     } catch (e) {
       this.setMappings([]);
-      // NotificationManager.error(`${e.message} could not fetch saved mappings`, 'Error', 5000);
+      NotificationManager.error(
+        `${e.message} could not fetch saved mappings`,
+        "Error",
+        5000
+      );
     }
   };
 
@@ -1247,9 +1322,6 @@ class IntegrationStore {
         (this.program.fetchingEntities === 1 && this.program.isTracker)
       );
     }
-    // else if (this.activeStep === 5) {
-    //     return this.program.disableCreate;
-    // }
     return false;
   }
 

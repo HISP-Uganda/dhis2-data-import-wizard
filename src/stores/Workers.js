@@ -1,9 +1,12 @@
 /* eslint-disable no-undef */
-import XLSX from 'xlsx';
-import {processDataSet, processProgramData, processEvents} from '../utils/utils'
+import XLSX from "xlsx";
+import {
+  processDataSet,
+  processProgramData,
+  processEvents,
+} from "../utils/utils";
 
 export function expensive(files) {
-
   let buffers = [];
 
   [].forEach.call(files, function (file) {
@@ -14,8 +17,9 @@ export function expensive(files) {
   const data = buffers[0];
 
   return XLSX.read(data, {
-    type: 'array',
-    raw: true
+    type: "array",
+    raw: true,
+    dateNF: "yyyy-mm-dd\\Thh:mm:ss",
   });
 }
 
@@ -24,14 +28,19 @@ export function processDataSetData(data, dataSet) {
     return processDataSet(data, dataSet);
   } catch (e) {
     console.log(e);
-    return {}
+    return {};
   }
 }
 
-export function processTrackerProgramData(data, program, uniqueColumn, instances) {
-  return processProgramData(data, program, uniqueColumn, instances)
+export function processTrackerProgramData(
+  data,
+  program,
+  uniqueColumn,
+  instances
+) {
+  return processProgramData(data, program, uniqueColumn, instances);
 }
 
 export function processEventProgramData(data, program, instances) {
-  return processEvents(data, program, instances)
+  return processEvents(data, program, instances);
 }

@@ -52,7 +52,6 @@ class Step3 extends React.Component {
           value={program.attributesFilter}
           onChange={(value) => program.filterAttributes(value)}
         />
-
         <Table className={classes.table}>
           <TableHead>
             <TableRow>
@@ -67,7 +66,7 @@ class Step3 extends React.Component {
           <TableBody>
             {program.programAttributes.map((n) => {
               let de = "";
-              if (n.trackedEntityAttribute.optionSet) {
+              if (n.trackedEntityAttribute.optionSetValue) {
                 de = (
                   <div>
                     <Button onClick={n.handleClickOpen}>Map Options</Button>

@@ -1,11 +1,8 @@
 import { action, computed, observable } from "mobx";
-import _ from "lodash";
+import _, { fromPairs, flatten } from "lodash";
 import moment from "moment";
-
 import { NotificationManager } from "react-notifications";
-
 import XLSX from "xlsx";
-
 import axios from "axios";
 import {
   encodeData,
@@ -16,8 +13,8 @@ import {
 } from "../utils/utils";
 import Param from "./Param";
 import OrganisationUnit from "./OrganisationUnit";
-
 import ProgramWorker from "workerize-loader?inline!./Workers"; // eslint-disable-line import/no-webpack-loader-syntax
+import { generateUid } from "../utils/uid";
 
 let instance = new ProgramWorker();
 
@@ -32,7 +29,7 @@ class Program {
   @observable programTrackedEntityAttributes = [];
   @observable trackedEntityType;
   @observable trackedEntity;
-  @observable mappingId = 1;
+  @observable mappingId = generateUid();
   @observable running = false;
 
   @observable orgUnitColumn = "";
@@ -150,7 +147,7 @@ class Program {
   @observable message = "";
   @observable incidentDateProvided = false;
   @observable processed;
-  @observable data;
+  @observable data = [];
   @observable isUploadingFromPage;
 
   @observable selectIncidentDatesInFuture;
@@ -166,6 +163,7 @@ class Program {
   @observable events = false;
 
   @observable remoteStage = null;
+  @observable remoteTrackedEntityTypes = {};
 
   constructor(
     lastUpdated,
@@ -190,6 +188,8 @@ class Program {
   @action closeDialog = () => this.setDialogOpen(false);
   @action setRemotePrograms = (val) => (this.remotePrograms = val);
   @action setRemoteProgram = (val) => (this.remoteProgram = val);
+  @action setRemoteTrackedEntityTypes = (val) =>
+    (this.remoteTrackedEntityTypes = val);
 
   @action handleTrackedEntityInstances = (event) => {
     this.trackedEntityInstances = event.target.checked;
@@ -216,7 +216,6 @@ class Program {
           password: this.password,
         },
       });
-
       this.setRemotePrograms(
         data.programs.map(({ id, name }) => {
           return {
@@ -244,7 +243,7 @@ class Program {
         {
           params: {
             fields:
-              "id,name,programType,programTrackedEntityAttributes[trackedEntityAttribute[id,code,name]],programStages[id,name,programStageDataElements[dataElement[id,code,name]]],organisationUnits[id,code,name]",
+              "id,name,programType,trackedEntityType,trackedEntity,programTrackedEntityAttributes[trackedEntityAttribute[id,code,name]],programStages[id,name,programStageDataElements[dataElement[id,code,name]]],organisationUnits[id,code,name]",
           },
           withCredentials: true,
           auth: {
@@ -431,7 +430,6 @@ class Program {
       if (sheets.length > 0) {
         await this.setSelectedSheet(sheets[0]);
       }
-
       this.closeDialog();
     } else if (rejected.length > 0) {
       NotificationManager.error(
@@ -471,7 +469,6 @@ class Program {
           } else {
             response = await axios.get(this.url + "?" + param);
           }
-
           if (response.status === 200) {
             let { data } = response;
             if (this.responseKey && this.responseKey !== "") {
@@ -549,7 +546,10 @@ class Program {
     if (val) {
       this.setProcessed(null);
       const data = XLSX.utils.sheet_to_json(this.workbook.Sheets[val.value], {
-        range: this.headerRow - 1,
+        header: 1,
+        defval: "",
+        raw: false,
+        rawNumbers: false,
       });
       this.setData(data);
       this.computeUnits();
@@ -599,36 +599,19 @@ class Program {
     let foundEntities = [];
     try {
       if (this.uniqueIds.length > 0) {
-        const chunked = _.chunk(this.uniqueIds, 100);
+        const chunked = _.chunk(this.uniqueIds, 250);
         for (const ch of chunked) {
-          let { trackedEntityInstances: data } = await api.get(
+          let { trackedEntityInstances } = await api.get(
             "trackedEntityInstances.json",
             {
               filter: `${this.uniqueAttribute}:IN:${ch.join(";")}`,
               ouMode: "ALL",
-              fields: "trackedEntityInstance",
+              trackedEntityType: this.trackedEntityType.id,
+              skipPaging: true,
+              fields: "*",
             }
           );
-
-          if (data.length > 0) {
-            const instances = data
-              .map((r) => r.trackedEntityInstance)
-              .join(";");
-            const params = {
-              paging: false,
-              ouMode: "ALL",
-              trackedEntityInstance: instances,
-              fields:
-                "trackedEntityInstance,orgUnit,attributes[attribute,value],enrollments[enrollment,program," +
-                "trackedEntityInstance,trackedEntityType,trackedEntity,enrollmentDate,incidentDate,orgUnit,events[program,trackedEntityInstance,event," +
-                "eventDate,status,completedDate,coordinate,programStage,orgUnit,dataValues[dataElement,value]]]",
-            };
-            const { trackedEntityInstances } = await api.get(
-              "trackedEntityInstances",
-              params
-            );
-            foundEntities = [...foundEntities, ...trackedEntityInstances];
-          }
+          foundEntities = [...foundEntities, ...trackedEntityInstances];
         }
         return foundEntities;
       }
@@ -735,7 +718,6 @@ class Program {
             this.setResponses(instancesResults);
           } catch (error) {}
         }
-
         this.setMessage("Finished updating tracked entities");
       }
 
@@ -820,92 +802,136 @@ class Program {
       const {
         programTrackedEntityAttributes,
         programStages,
+        trackedEntityType,
+        trackedEntity,
         id,
       } = this.remoteProgram;
-
       const stage = programStages.find((s) => s.id === this.remoteStage.value);
+      const calculatedAttributes = fromPairs(
+        programTrackedEntityAttributes.map((ptea) => [
+          ptea.trackedEntityAttribute.name,
+          "",
+        ])
+      );
+
       let tei = [];
       let page = 1;
       this.openDialog();
       do {
+        let params = {
+          ouMode: "ALL",
+          fields: "*",
+          pageSize: 250,
+          page,
+        };
+
+        if (trackedEntityType) {
+          params = { ...params, trackedEntityType: trackedEntityType.id };
+        } else if (trackedEntity) {
+          params = { ...params, trackedEntity: trackedEntity.id };
+        } else {
+          params = { ...params, program: id };
+        }
+
         const {
           data: { trackedEntityInstances },
         } = await axios.get(`${this.url}/api/trackedEntityInstances.json`, {
           withCredentials: true,
-          params: {
-            program: id,
-            ouMode: "ALL",
-            fields: "*",
-            pageSize: 100,
-            page,
-          },
+          params,
           auth: {
             username: this.username,
             password: this.password,
           },
         });
-        const json = trackedEntityInstances.map(
+        const instances = trackedEntityInstances.map(
           ({
-            programOwners,
-            enrollments,
             attributes,
+            enrollments,
             relationships,
-            ...othersAttributes
+            notes,
+            programOwners,
+            ...instance
           }) => {
-            const calculatedAttributes = programTrackedEntityAttributes.map(
-              (ptea) => {
-                const currentAttribute = attributes.find(
-                  (attr) => ptea.trackedEntityAttribute.id === attr.attribute
-                );
-                if (currentAttribute) {
-                  return [
-                    ptea.trackedEntityAttribute.name,
-                    currentAttribute.value,
-                  ];
-                }
-                return [ptea.trackedEntityAttribute.name, ""];
-              }
-            );
-            const currentEnrollment = enrollments.find((e) => e.program === id);
-            let allEvents = [];
-            if (currentEnrollment) {
-              const {
-                notes,
-                relationships,
-                attributes,
-                events,
-                ...rest
-              } = currentEnrollment;
+            const identifies = {
+              ...instance,
+            };
+            const attr = {
+              ...calculatedAttributes,
+              ...fromPairs(
+                attributes.map(({ displayName, value }) => [displayName, value])
+              ),
+            };
+            const enrolls = enrollments
+              .filter((e) => e.program === id && e.status === "ACTIVE")
+              .map(
+                ({
+                  events,
+                  notes,
+                  programStage,
+                  relationships,
+                  enrollmentDate,
+                  incidentDate,
+                  program,
+                  attributes,
+                  ...ens
+                }) => {
+                  return events
+                    .filter((e) => e.programStage === this.remoteStage.value)
+                    .map(
+                      ({
+                        dataValues,
+                        programStage,
+                        orgUnit: eventOrgUnit,
+                        relationships,
+                        notes,
+                        eventDate,
+                        ...eves
+                      }) => {
+                        const calculatedElements = stage.programStageDataElements.map(
+                          (psde) => {
+                            const currentElement = dataValues.find(
+                              (dv) => dv.dataElement === psde.dataElement.id
+                            );
 
-              allEvents = events
-                .filter((e) => e.programStage === this.remoteStage.value)
-                .map(({ notes, relationships, dataValues, ...others }) => {
-                  const calculatedElements = stage.programStageDataElements.map(
-                    (psde) => {
-                      const currentElement = dataValues.find(
-                        (dv) => dv.dataElement === psde.dataElement.id
-                      );
+                            if (currentElement) {
+                              return [
+                                psde.dataElement.name,
+                                currentElement.value,
+                              ];
+                            }
 
-                      if (currentElement) {
-                        return [psde.dataElement.name, currentElement.value];
+                            return [psde.dataElement.name, ""];
+                          }
+                        );
+                        return {
+                          ...ens,
+                          programStage,
+                          enrollmentDate: moment(
+                            enrollmentDate,
+                            "YYYY-MM-DD"
+                          ).format("YYYY-MM-DD"),
+                          incidentDate: moment(
+                            incidentDate,
+                            "YYYY-MM-DD"
+                          ).format("YYYY-MM-DD"),
+                          eventDate: moment(eventDate, "YYYY-MM-DD").format(
+                            "YYYY-MM-DD"
+                          ),
+                          program,
+                          eventOrgUnit,
+                          ...identifies,
+                          ...attr,
+                          ...eves,
+                          ...fromPairs(calculatedElements),
+                        };
                       }
-
-                      return [psde.dataElement.name, ""];
-                    }
-                  );
-                  return {
-                    ..._.fromPairs(calculatedAttributes),
-                    ...othersAttributes,
-                    ...others,
-                    ...rest,
-                    ..._.fromPairs(calculatedElements),
-                  };
-                });
-            }
-            return _.flatten(allEvents);
+                    );
+                }
+              );
+            return flatten(enrolls);
           }
         );
-        this.setData(_.flatten(json));
+        this.setData(_.flatten(instances));
         await this.process(false);
         await this.insertData(false);
         tei = trackedEntityInstances;
@@ -917,28 +943,10 @@ class Program {
     }
   };
 
-  @action saveMapping = async (mappings) => {
-    const mapping = _.findIndex(mappings, {
-      mappingId: this.mappingId,
-    });
-
-    if (mapping !== -1) {
-      mappings.splice(mapping, 1, this);
-    } else {
-      mappings = [...mappings, this];
-    }
-
-    const toBeSaved = mappings.map((p) => {
-      return p.canBeSaved;
-    });
+  @action saveMapping = async () => {
     try {
       const namespace = await this.d2.dataStore.get("bridge");
-      namespace.set("mappings", toBeSaved);
-      NotificationManager.success(
-        "Success",
-        "Mapping saved successfully",
-        5000
-      );
+      namespace.set(this.mappingId, this.canBeSaved);
     } catch (e) {
       NotificationManager.error(
         "Error",
@@ -948,21 +956,12 @@ class Program {
     }
   };
 
-  @action deleteMapping = async (mappings) => {
-    const mapping = _.findIndex(mappings, {
-      mappingId: this.mappingId,
-    });
-    mappings.splice(mapping, 1);
-
-    mappings = mappings.map((p) => {
-      return p.canBeSaved;
-    });
-
-    const namespace = await this.d2.dataStore.get("bridge");
-    namespace.set("mappings", mappings);
+  @action deleteMapping = async () => {
+    const api = this.d2.Api.getApi();
+    await api.get(`dataStore/bridge/${this.mappingId}`);
   };
 
-  @action scheduleProgram = (mappings) => {
+  @action scheduleProgram = () => {
     if (this.scheduleTime !== 0) {
       setInterval(
         action(async () => {
@@ -971,7 +970,7 @@ class Program {
             await this.pullData();
             await this.create();
             this.lastRun = moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
-            await this.saveMapping(mappings);
+            await this.saveMapping();
             this.setRunning(false);
           }
         }),
@@ -982,15 +981,15 @@ class Program {
     }
   };
 
-  @action runWhenURL = (mappings) => {
+  @action runWhenURL = async () => {
     this.setRunning(true);
     this.pullData();
     this.create();
     this.lastRun = moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
-    this.saveMapping(mappings);
+    await this.saveMapping();
   };
 
-  @action runWithFile = (mappings) => {
+  @action runWithFile = () => {
     if (this.scheduleTime !== 0) {
       setInterval(
         action(() => {
@@ -999,7 +998,7 @@ class Program {
             this.pullData();
             this.create();
             this.lastRun = moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
-            this.saveMapping(mappings);
+            this.saveMapping();
             this.setRunning(false);
           }
         }),
@@ -1102,10 +1101,10 @@ class Program {
     } else {
       if (
         this.orgUnitColumn &&
-        this.data.length > 0 &&
-        _.keys(this.data[0]).indexOf(this.orgUnitColumn.value) !== -1
+        this.realData.length > 0 &&
+        _.keys(this.realData[0]).indexOf(this.orgUnitColumn.value) !== -1
       ) {
-        let units = this.data.map((d) => {
+        let units = this.realData.map((d) => {
           return new OrganisationUnit("", d[this.orgUnitColumn.value], "");
         });
 
@@ -1163,7 +1162,6 @@ class Program {
     const uniqueColumn = JSON.parse(JSON.stringify(this.uniqueColumn));
     const data = JSON.parse(JSON.stringify(this.withoutDuplicates));
     let dataResponse;
-    console.log(program);
     if (this.isTracker) {
       this.setMessage("Fetching previous tracked entity instances");
       const searchedInstances = await this.searchTrackedEntities();
@@ -1172,7 +1170,6 @@ class Program {
         this.uniqueAttribute,
         searchedInstances
       );
-      console.log(groupedEntities);
       this.setMessage("Processing selected tracker program...");
       dataResponse = await instance.processTrackerProgramData(
         data,
@@ -1198,57 +1195,54 @@ class Program {
   };
 
   @computed get withoutDuplicates() {
-    if (!this.isTracker && this.data) {
-      let filteredData = [];
-
-      const programStage = this.programStages[0];
-      if (
-        programStage.elementsWhichAreIdentifies.length > 0 &&
-        programStage.eventDateIdentifiesEvent
-      ) {
-        const grped = _.groupBy(this.data, (v) => {
-          const ele = programStage.elementsWhichAreIdentifies
-            .map((e) => {
-              return v[e.column.value];
-            })
-            .join("@");
-          return `${ele}${moment(v[programStage.eventDateColumn.value]).format(
-            "YYYY-MM-DD"
-          )}`;
-        });
-        _.forOwn(grped, (v) => {
-          filteredData = [...filteredData, v[0]];
-        });
-        return filteredData;
-      } else if (programStage.elementsWhichAreIdentifies.length) {
-        const grped = _.groupBy(this.data, (v) => {
-          return programStage.elementsWhichAreIdentifies
-            .map((e) => {
-              return v[e.column.value];
-            })
-            .join("@");
-        });
-        _.forOwn(grped, (v) => {
-          filteredData = [...filteredData, v[0]];
-        });
-        return filteredData;
-      } else if (programStage.eventDateIdentifiesEvent) {
-        const grped = _.groupBy(this.data, (v) => {
-          return moment(v[programStage.eventDateColumn.value]).format(
-            "YYYY-MM-DD"
-          );
-        });
-        _.forOwn(grped, (v) => {
-          filteredData = [...filteredData, v[0]];
-        });
-        return filteredData;
+    if (this.realData) {
+      if (!this.isTracker) {
+        let filteredData = [];
+        const programStage = this.programStages[0];
+        if (
+          programStage.elementsWhichAreIdentifies.length > 0 &&
+          programStage.eventDateIdentifiesEvent
+        ) {
+          const grped = _.groupBy(this.realData, (v) => {
+            const ele = programStage.elementsWhichAreIdentifies
+              .map((e) => {
+                return v[e.column.value];
+              })
+              .join("@");
+            return `${ele}${moment(
+              v[programStage.eventDateColumn.value]
+            ).format("YYYY-MM-DD")}`;
+          });
+          _.forOwn(grped, (v) => {
+            filteredData = [...filteredData, v[0]];
+          });
+          return filteredData;
+        } else if (programStage.elementsWhichAreIdentifies.length) {
+          const grped = _.groupBy(this.realData, (v) => {
+            return programStage.elementsWhichAreIdentifies
+              .map((e) => {
+                return v[e.column.value];
+              })
+              .join("@");
+          });
+          _.forOwn(grped, (v) => {
+            filteredData = [...filteredData, v[0]];
+          });
+          return filteredData;
+        } else if (programStage.eventDateIdentifiesEvent) {
+          const grped = _.groupBy(this.realData, (v) => {
+            return moment(v[programStage.eventDateColumn.value]).format(
+              "YYYY-MM-DD"
+            );
+          });
+          _.forOwn(grped, (v) => {
+            filteredData = [...filteredData, v[0]];
+          });
+          return filteredData;
+        }
       }
+      return this.realData;
     }
-
-    if (this.data) {
-      return this.data;
-    }
-
     return [];
   }
 
@@ -1301,8 +1295,21 @@ class Program {
       }
       return cols;
     } else {
-      if (this.data) {
-        return _.keys(this.data[0]).map((e) => {
+      if (
+        this.data &&
+        this.data.length > 0 &&
+        this.headerRow &&
+        this.dataSource !== "api"
+      ) {
+        return this.data[this.headerRow - 1].map((e) => {
+          return {
+            label: e,
+            value: e,
+          };
+        });
+      }
+      if (this.data && this.data.length > 0 && this.dataSource === "api") {
+        return Object.keys(this.data[0]).map((e) => {
           return {
             label: e,
             value: e,
@@ -1311,6 +1318,17 @@ class Program {
       }
     }
     return [];
+  }
+
+  @computed
+  get realData() {
+    if (this.isDHIS2 || this.dataSource === "api") {
+      return this.data;
+    } else {
+      return this.data.slice(this.dataStartRow - 1).map((d) => {
+        return fromPairs(d.map((d, i) => [this.columns[i].value, d]));
+      });
+    }
   }
 
   @computed
@@ -1518,8 +1536,12 @@ class Program {
 
   @computed
   get uniqueIds() {
-    if (this.uniqueColumn !== null && this.data && this.data.length > 0) {
-      let foundIds = this.data
+    if (
+      this.uniqueColumn !== null &&
+      this.realData &&
+      this.realData.length > 0
+    ) {
+      let foundIds = this.realData
         .map((d) => {
           return d[this.uniqueColumn];
         })
@@ -1676,7 +1698,6 @@ class Program {
   @computed get currentInstanceUpdates() {
     if (this.processed) {
       const { trackedEntityInstancesUpdate } = this.processed;
-
       return trackedEntityInstancesUpdate.map((tei) => {
         const attributes = tei.attributes.map((a) => {
           return { ...a, name: this.processedAttributes[a.attribute] };

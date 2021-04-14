@@ -115,7 +115,7 @@ class Step2 extends React.Component {
                 <TableCell>{u.name}</TableCell>
                 <TableCell>
                   <Select
-                    placeholder="Aggregation Level"
+                    placeholder="Select unit"
                     value={u.mapping}
                     options={this.integrationStore.program.organisationUnits.map(
                       (ui) => {

@@ -18,6 +18,7 @@ import ProgramTrackedEntityAttribute from "./ProgramTrackedEntityAttribute";
 import Program from "./Program";
 import TrackedEntityType from "./TrackedEntityType";
 import Schedule from "./Schedule";
+import { generateUid } from "../utils/uid";
 
 export const makeCategoryCombo = (val) => {
   if (val.categoryCombo) {
@@ -121,7 +122,6 @@ export const convertAggregate = (ds, d2) => {
     f.setCategoryOptionCombos(categoryOptionCombos);
     f.setDataElements(dataElements);
     f.setName(form.name);
-
     return f;
   });
 
@@ -219,14 +219,32 @@ export const convertAggregate = (ds, d2) => {
   return dataSet;
 };
 
-export const convert = (program, d2) => {
-  const programStages = program.programStages.map((ps) => {
+export const convert = (program, d2, latestProgram) => {
+  const programStages = latestProgram.programStages.map((ps) => {
+    const savedStage = program.programStages
+      ? program.programStages.find((s) => s.id === ps.id)
+      : {} || {};
     const programStageDataElements = ps.programStageDataElements.map((psd) => {
+      const savedDataElement = savedStage.programStageDataElements
+        ? savedStage.programStageDataElements.find(
+            (savedElement) => savedElement.dataElement.id === psd.dataElement.id
+          )
+        : {};
+
       let optionSet = null;
-      if (psd.dataElement.optionSet) {
+      if (psd.dataElement.optionSetValue) {
         const options = psd.dataElement.optionSet.options.map((o) => {
           const option = new Option(o.code, o.name);
-          option.setValue(o.value || "");
+          const savedOption =
+            !_.isEmpty(savedDataElement) &&
+            !!savedDataElement.dataElement.optionSet
+              ? savedDataElement.dataElement.optionSet.options.find(
+                  (oo) => o.code === oo.code
+                )
+              : "";
+          option.setValue(
+            !!savedOption && savedOption.value ? savedOption.value : ""
+          );
           return option;
         });
         optionSet = new OptionSet(options);
@@ -238,15 +256,21 @@ export const convert = (program, d2) => {
         psd.dataElement.name,
         psd.dataElement.displayName,
         psd.dataElement.valueType,
+        psd.dataElement.optionSetValue,
         optionSet
       );
-      dataElement.setAsIdentifier(psd.dataElement.identifiesEvent);
+
+      if (savedDataElement && savedDataElement.dataElement) {
+        dataElement.setAsIdentifier(
+          savedDataElement.dataElement.identifiesEvent
+        );
+      }
       const programStageDataElement = new ProgramStageDataElement(
         psd.compulsory,
         dataElement
       );
-      if (psd.column) {
-        programStageDataElement.setColumn(psd.column);
+      if (savedDataElement && savedDataElement.column) {
+        programStageDataElement.setColumn(savedDataElement.column);
       }
       return programStageDataElement;
     });
@@ -257,24 +281,38 @@ export const convert = (program, d2) => {
       ps.repeatable,
       programStageDataElements
     );
-    programStage.setEventDateAsIdentifier(ps.eventDateIdentifiesEvent);
-    programStage.setCompleteEvents(ps.completeEvents);
-    programStage.setLongitudeColumn(ps.longitudeColumn);
-    programStage.setLatitudeColumn(ps.latitudeColumn);
-    programStage.setCreateNewEvents(ps.createNewEvents);
-    programStage.setUpdateEvents(ps.updateEvents);
-    programStage.setDate(ps.eventDateColumn);
-
+    programStage.setEventDateAsIdentifier(savedStage.eventDateIdentifiesEvent);
+    programStage.setCompleteEvents(savedStage.completeEvents);
+    programStage.setLongitudeColumn(savedStage.longitudeColumn);
+    programStage.setLatitudeColumn(savedStage.latitudeColumn);
+    programStage.setCreateNewEvents(savedStage.createNewEvents);
+    programStage.setUpdateEvents(savedStage.updateEvents);
+    programStage.setDate(savedStage.eventDateColumn);
     return programStage;
   });
 
-  const programTrackedEntityAttributes = program.programTrackedEntityAttributes.map(
+  const programTrackedEntityAttributes = latestProgram.programTrackedEntityAttributes.map(
     (pa) => {
+      const savedAttribute = program.programTrackedEntityAttributes
+        ? program.programTrackedEntityAttributes.find(
+            (spa) =>
+              spa.trackedEntityAttribute.id === pa.trackedEntityAttribute.id
+          )
+        : null;
       let optionSet = null;
-      if (pa.trackedEntityAttribute.optionSet) {
+      if (pa.trackedEntityAttribute.optionSetValue) {
         const options = pa.trackedEntityAttribute.optionSet.options.map((o) => {
           const option = new Option(o.code, o.name);
-          option.setValue(o.value || null);
+          const savedOption =
+            !_.isEmpty(savedAttribute) &&
+            !!savedAttribute.trackedEntityAttribute.optionSet
+              ? savedAttribute.trackedEntityAttribute.optionSet.options.find(
+                  (oo) => o.code === oo.code
+                )
+              : "";
+          option.setValue(
+            !!savedOption && savedOption.value ? savedOption.value : ""
+          );
           return option;
         });
         optionSet = new OptionSet(options);
@@ -286,6 +324,7 @@ export const convert = (program, d2) => {
         pa.trackedEntityAttribute.name,
         pa.trackedEntityAttribute.displayName,
         pa.trackedEntityAttribute.unique,
+        pa.trackedEntityAttribute.optionSetValue,
         optionSet
       );
 
@@ -294,31 +333,32 @@ export const convert = (program, d2) => {
         pa.mandatory,
         trackedEntityAttribute
       );
-      if (pa.column) {
-        programTrackedEntityAttribute.setColumn(pa.column);
+      if (savedAttribute) {
+        programTrackedEntityAttribute.setColumn(savedAttribute.column);
       }
       return programTrackedEntityAttribute;
     }
   );
-  const programCategoryCombo = makeCategoryCombo(program);
+  const programCategoryCombo = makeCategoryCombo(latestProgram);
   const p = new Program(
-    program.lastUpdated,
-    program.name,
-    program.id,
-    program.programType,
-    program.displayName,
+    latestProgram.lastUpdated,
+    latestProgram.name,
+    latestProgram.id,
+    latestProgram.programType,
+    latestProgram.displayName,
     programStages,
     programTrackedEntityAttributes
   );
 
   p.setCategoryCombo(programCategoryCombo);
+  p.setOrganisationUnits(latestProgram.organisationUnits);
 
-  p.setOrganisationUnits(program.organisationUnits);
-
-  if (program.trackedEntityType && program.trackedEntityType.id) {
-    p.setTrackedEntityType(new TrackedEntityType(program.trackedEntityType.id));
-  } else if (program.trackedEntity && program.trackedEntity) {
-    p.setTrackedEntity(new TrackedEntityType(program.trackedEntity.id));
+  if (latestProgram.trackedEntityType && latestProgram.trackedEntityType.id) {
+    p.setTrackedEntityType(
+      new TrackedEntityType(latestProgram.trackedEntityType.id)
+    );
+  } else if (latestProgram.trackedEntity && latestProgram.trackedEntity) {
+    p.setTrackedEntity(new TrackedEntityType(latestProgram.trackedEntity.id));
   }
 
   p.setD2(d2);
@@ -338,7 +378,7 @@ export const convert = (program, d2) => {
   p.setUploaded(program.uploaded);
   p.setUploadMessage(program.uploadMessage);
   p.setOrgUnitColumn(program.orgUnitColumn);
-  p.setMappingId(program.mappingId);
+  p.setMappingId(program.mappingId || generateUid());
   p.setLatitudeColumn(program.latitudeColumn);
   p.setLongitudeColumn(program.longitudeColumn);
   p.setDateEndFilter(program.dateEndFilter || "");
@@ -388,7 +428,6 @@ export const convert = (program, d2) => {
     });
     p.setParams(params);
   }
-
   return p;
 };
 

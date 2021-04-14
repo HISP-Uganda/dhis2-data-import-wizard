@@ -12,7 +12,6 @@ import Summary from "./Summary";
 import {
   Delete,
   ArrowDownward,
-  ArrowUpward,
   CloudDownload,
   CloudUpload,
 } from "@material-ui/icons";
@@ -46,11 +45,9 @@ class Step0 extends React.Component {
     const { IntegrationStore } = props;
     this.integrationStore = IntegrationStore;
   }
-
   componentDidMount() {
     this.integrationStore.checkDataStore();
   }
-
   render() {
     return (
       <div>

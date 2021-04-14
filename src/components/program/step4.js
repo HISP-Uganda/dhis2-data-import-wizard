@@ -189,8 +189,8 @@ class Step4 extends React.Component {
                   </TableHead>
                   <TableBody>
                     {n.dataElements.map((s) => {
-                      let de = "";
-                      if (s.dataElement.optionSet) {
+                      let de = null;
+                      if (s.dataElement.optionSetValue) {
                         de = (
                           <div>
                             <Button onClick={s.handleClickOpen}>
