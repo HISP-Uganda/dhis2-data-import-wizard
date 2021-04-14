@@ -290,8 +290,6 @@ export const processDataSet = (data, dataSet) => {
                 return mapping && mapping.value && v.dx === mapping.value;
               });
               filtered.forEach((d) => {
-                // const attribute = findAttributeCombo(categoryCombo, []);
-                // if (attribute) {
                 const orgUnit = units[d["ou"]];
                 if (orgUnit) {
                   dataValues = [
@@ -313,14 +311,6 @@ export const processDataSet = (data, dataSet) => {
                     },
                   ];
                 }
-                // } else {
-                //   errors = [
-                //     ...errors,
-                //     {
-                //       error: `Attribute with value not found`,
-                //     },
-                //   ];
-                // }
               });
             });
           }
@@ -495,36 +485,31 @@ export const validText = (dataType, value, dataSource) => {
     case "LONG_TEXT":
       return !!value;
     case "NUMBER":
-      return !isNaN(value);
+      return !isNaN(Number(value));
     case "EMAIL":
       const re = /\S+@\S+\.\S+/;
       return re.test(String(value).toLowerCase());
     case "BOOLEAN":
-      return value === false || value === true;
+      return String(value) === "false" || String(value) === "true";
     case "TRUE_ONLY":
-      return value + "" === true + "";
+      return String(value) === "true";
     case "PERCENTAGE":
-      return value >= 0 && value <= 100;
+      return Number(value) >= 0 && Number(value) <= 100;
     case "INTEGER":
-      return !isNaN(value) && !isNaN(parseInt(value, 10));
+      return !isNaN(Number(value)) && Number.isInteger(Number(value));
     case "DATE":
     case "DATETIME":
     case "TIME":
-      if (["xlsx", "xls"].indexOf(dataSource) !== -1) {
-        const evDate =
-          -2209075200000 + (value - (value < 61 ? 0 : 1)) * 86400000;
-        return moment(new Date(evDate)).isValid();
-      }
-      return moment(value).isValid();
+      return moment(value).isValid() || moment(value, "DD-MM-YYYY").isValid();
     case "UNIT_INTERVAL":
-      return value >= 0 && value <= 1;
+      return Number(value) >= 0 && Number(value) <= 1;
     case "INTEGER_NEGATIVE":
-      return Number.isInteger(value) && value >= 0;
     case "NEGATIVE_INTEGER":
-      return Number.isInteger(value) && value < 0;
+      return Number.isInteger(Number(value)) && Number(value) < 0;
     case "INTEGER_ZERO_OR_POSITIVE":
     case "AGE":
-      return Number.isInteger(value) && value >= 0;
+      const v = Number(value);
+      return !isNaN(v) && Number.isInteger(v) && v >= 0;
     case "COORDINATE":
       try {
         const c = JSON.parse(value);
@@ -537,8 +522,14 @@ export const validText = (dataType, value, dataSource) => {
   }
 };
 
-export const validateValue = (dataType, value, optionSet, dataSource) => {
-  if (optionSet) {
+export const validateValue = (
+  dataType,
+  value,
+  optionSetValue,
+  optionSet,
+  dataSource
+) => {
+  if (optionSetValue && !!value) {
     const options = optionSet.options.map((o) => {
       return {
         code: o.code,
@@ -554,27 +545,20 @@ export const validateValue = (dataType, value, optionSet, dataSource) => {
     if (!!coded) {
       return coded.code;
     }
-  } else if (validText(dataType, value, dataSource)) {
-    if (["xlsx", "xls"].indexOf(dataSource) !== -1) {
-      const evDate = -2209075200000 + (value - (value < 61 ? 0 : 1)) * 86400000;
-      if (dataType === "DATETIME") {
-        return moment(new Date(evDate)).format("YYYY-MM-DDTHH:mm");
-      } else if (dataType === "DATE") {
-        return moment(new Date(evDate)).format("YYYY-MM-DD");
-      } else if (dataType === "TIME") {
-        return moment(new Date(evDate)).format("HH:mm");
-      }
-      return value;
-    } else {
-      if (dataType === "DATETIME") {
-        return moment(value).format("YYYY-MM-DDTHH:mm");
-      } else if (dataType === "DATE") {
+  } else if (!!value && validText(dataType, value, dataSource)) {
+    if (dataType === "DATETIME") {
+      return moment(value).format("YYYY-MM-DDTHH:mm");
+    } else if (dataType === "DATE") {
+      if (moment(value).isValid()) {
         return moment(value).format("YYYY-MM-DD");
-      } else if (dataType === "TIME") {
-        return moment(value).format("HH:mm");
       }
-      return value;
+      if (moment(value, "DD-MM-YYYY").isValid()) {
+        return moment(value, "DD-MM-YYYY").format("YYYY-MM-DD");
+      }
+    } else if (dataType === "TIME") {
+      return moment(value).format("HH:mm");
     }
+    return value;
   }
   return null;
 };
@@ -790,11 +774,9 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
   let duplicates = [];
   let conflicts = [];
   let errors = [];
-
   const {
     id,
     programStages,
-    dataSource,
     programTrackedEntityAttributes,
     selectIncidentDatesInFuture,
     selectEnrollmentDatesInFuture,
@@ -805,7 +787,6 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
     updateEntities,
     createEntities,
     createNewEnrollments,
-    orgUnitStrategy,
     orgUnitColumn,
     sourceOrganisationUnits,
     incidentDateProvided,
@@ -814,7 +795,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
 
   if (uniqueColumn) {
     data = data.filter((d) => {
-      return d[uniqueColumn] !== null && d[uniqueColumn] !== undefined;
+      return !!d[uniqueColumn];
     });
     let clients = _.groupBy(data, uniqueColumn);
     let newClients = [];
@@ -854,20 +835,6 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
           let eventDate;
           if (
             stage.eventDateColumn &&
-            (stage.createNewEvents || stage.updateEvents) &&
-            ["xlsx", "xls"].indexOf(dataSource) !== -1
-          ) {
-            const evDate =
-              -2209075200000 +
-              (d[stage.eventDateColumn.value] -
-                (d[stage.eventDateColumn.value] < 61 ? 0 : 1)) *
-                86400000;
-            const date = moment(new Date(evDate), "YYYY-MM-DD");
-            if (date.isValid()) {
-              eventDate = date.format("YYYY-MM-DD");
-            }
-          } else if (
-            stage.eventDateColumn &&
             (stage.createNewEvents || stage.updateEvents)
           ) {
             const date = moment(d[stage.eventDateColumn.value]);
@@ -900,9 +867,15 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
               const value = d[e.column.value];
               const type = e.dataElement.valueType;
               const optionsSet = e.dataElement.optionSet;
-              const validatedValue = validateValue(type, value, optionsSet);
+              const optionSetValue = e.dataElement.optionSetValue;
+              const validatedValue = validateValue(
+                type,
+                value,
+                optionSetValue,
+                optionsSet
+              );
 
-              if (value !== "" && validatedValue !== null) {
+              if (!!value && validatedValue !== null) {
                 dataValues = [
                   ...dataValues,
                   {
@@ -910,7 +883,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                     value: validatedValue,
                   },
                 ];
-              } else if (value !== undefined && value !== null) {
+              } else if (!!value) {
                 conflicts = [
                   ...conflicts,
                   {
@@ -983,9 +956,14 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
           const value = d[a.column.value];
           const type = a.valueType;
           const optionsSet = a.trackedEntityAttribute.optionSet;
-          const validatedValue = validateValue(type, value, optionsSet);
-
-          if (value !== "" && validatedValue !== null) {
+          const optionSetValue = a.trackedEntityAttribute.optionSetValue;
+          const validatedValue = validateValue(
+            type,
+            value,
+            optionSetValue,
+            optionsSet
+          );
+          if (!!value && validatedValue !== null) {
             attributes = [
               ...attributes,
               {
@@ -993,7 +971,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
                 value: validatedValue,
               },
             ];
-          } else if (value !== undefined) {
+          } else if (!!value) {
             conflicts = [
               ...conflicts,
               {
@@ -1013,32 +991,13 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
         if (attributes.length > 0) {
           allAttributes = [...allAttributes, attributes];
         }
+
         if (enrollmentDateColumn) {
           let enrollmentDate;
           let incidentDate;
-          if (dataSource === "xlsx" || dataSource === "xls") {
-            const eDate =
-              -2209075200000 +
-              (d[enrollmentDateColumn.value] -
-                (d[enrollmentDateColumn.value] < 61 ? 0 : 1)) *
-                86400000;
-            const currentDate = new Date(eDate);
-            enrollmentDate = moment(currentDate, "YYYY-MM-DD");
-          } else {
-            enrollmentDate = moment(d[enrollmentDateColumn.value]);
-          }
-
+          enrollmentDate = moment(d[enrollmentDateColumn.value], "YYYY-MM-DD");
           if (incidentDateProvided && incidentDateColumn) {
-            if (dataSource === "xlsx" || dataSource === "xls") {
-              const iDate =
-                -2209075200000 +
-                (d[incidentDateColumn.value] -
-                  (d[incidentDateColumn.value] < 61 ? 0 : 1)) *
-                  86400000;
-              incidentDate = moment(new Date(iDate), "YYYY-MM-DD");
-            } else {
-              incidentDate = moment(d[incidentDateColumn.value], "YYYY-MM-DD");
-            }
+            incidentDate = moment(d[incidentDateColumn.value], "YYYY-MM-DD");
           } else if (!incidentDateProvided) {
             incidentDate = enrollmentDate;
           }
@@ -1048,7 +1007,15 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
             enrollmentDate.isValid() &&
             incidentDate.isValid()
           ) {
-            if (
+            if (selectEnrollmentDatesInFuture && selectIncidentDatesInFuture) {
+              enrollmentDates = [
+                ...enrollmentDates,
+                {
+                  enrollmentDate: enrollmentDate.format("YYYY-MM-DD"),
+                  incidentDate: incidentDate.format("YYYY-MM-DD"),
+                },
+              ];
+            } else if (
               !selectEnrollmentDatesInFuture &&
               !selectIncidentDatesInFuture
             ) {
@@ -1382,11 +1349,7 @@ export const processProgramData = (data, program, uniqueColumn, instances) => {
             errors = [
               ...errors,
               {
-                error:
-                  "Organisation unit " +
-                  orgUnits[0] +
-                  " not found using strategy " +
-                  orgUnitStrategy.value,
+                error: "Organisation unit " + orgUnits[0] + " not found",
                 row: client.client,
               },
             ];
@@ -1606,7 +1569,6 @@ export const processEvents = (program, data, eventsData) => {
   const {
     id,
     programStages,
-    dataSource,
     orgUnitColumn,
     orgUnitStrategy,
     sourceOrganisationUnits,
@@ -1621,23 +1583,7 @@ export const processEvents = (program, data, eventsData) => {
       let eventDate;
       let coordinate = null;
       let orgUnit;
-
       if (
-        stage.eventDateColumn &&
-        (stage.createNewEvents || stage.updateEvents) &&
-        ["xlsx", "xls"].indexOf(dataSource) !== -1
-      ) {
-        const eDate =
-          -2209075200000 +
-          (d[stage.eventDateColumn.value] -
-            (d[stage.eventDateColumn.value] < 61 ? 0 : 1)) *
-            86400000;
-        const currentDate = new Date(eDate);
-        const date = moment(currentDate);
-        if (date.isValid()) {
-          eventDate = date.format("YYYY-MM-DD");
-        }
-      } else if (
         stage.eventDateColumn &&
         (stage.createNewEvents || stage.updateEvents)
       ) {
@@ -1671,8 +1617,18 @@ export const processEvents = (program, data, eventsData) => {
             let value = d[e.column.value];
             const type = e.dataElement.valueType;
             const optionsSet = e.dataElement.optionSet;
-            const validatedValue = validateValue(type, value, optionsSet);
-            if (value !== "" && validatedValue) {
+            const optionSetValue = e.dataElement.optionSetValue;
+            const validatedValue = validateValue(
+              type,
+              value,
+              optionSetValue,
+              optionsSet
+            );
+            if (
+              value !== "" &&
+              value !== undefined &&
+              validatedValue !== null
+            ) {
               return {
                 dataElement: e.dataElement.id,
                 value: validatedValue,
