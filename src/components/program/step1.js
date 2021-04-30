@@ -1,64 +1,69 @@
 import React from "react";
-import Table from '@dhis2/d2-ui-table';
-import {withStyles} from "@material-ui/core/styles";
-import {inject, observer} from "mobx-react";
+import Table from "@dhis2/d2-ui-table";
+import { withStyles } from "@material-ui/core/styles";
+import { inject, observer } from "mobx-react";
 import Progress from "../progress";
 import TablePagination from "@material-ui/core/TablePagination";
-import {InputField} from "@dhis2/d2-ui-core";
+import { InputField } from "@dhis2/d2-ui-core";
+const styles = (theme) => ({});
 
-const styles = theme => ({});
-
-@inject('IntegrationStore')
+@inject("IntegrationStore")
 @observer
 class Step1 extends React.Component {
+  integrationStore = null;
 
-    integrationStore = null;
+  constructor(props) {
+    super(props);
+    const { IntegrationStore } = props;
+    this.integrationStore = IntegrationStore;
+  }
 
-    constructor(props) {
-        super(props);
-        const {IntegrationStore} = props;
-        this.integrationStore = IntegrationStore;
-    }
+  componentDidMount() {
+    this.integrationStore.setSearch("", "step1");
+    this.integrationStore.fetchPrograms();
+  }
 
-    componentDidMount() {
-        this.integrationStore.setSearch('', 'step1');
-        this.integrationStore.fetchPrograms();
-    }
-
-    render() {
-
-        return <div>
-            <InputField
-                label="Search"
-                type="text"
-                fullWidth
-                value={this.integrationStore.search}
-                onChange={(value) => this.integrationStore.setSearch(value, 'step1')}/>
-            <Table
-                columns={['displayName', 'programType', 'lastUpdated']}
-                rows={this.integrationStore.programs}
-                contextMenuActions={this.integrationStore.multipleCma}
-                primaryAction={this.integrationStore.executeEditIfAllowed}
-            />
-            <TablePagination
-                component="div"
-                count={this.integrationStore.totalPrograms}
-                rowsPerPageOptions={[5, 10, 25, 50, 100]}
-                rowsPerPage={this.integrationStore.paging['step1']['rowsPerPage']}
-                page={this.integrationStore.paging['step1']['page']}
-                backIconButtonProps={{
-                    'aria-label': 'Previous Page',
-                }}
-                nextIconButtonProps={{
-                    'aria-label': 'Next Page',
-                }}
-                onChangePage={this.integrationStore.handleChangeElementPage('step1')}
-                onChangeRowsPerPage={this.integrationStore.handleChangeElementRowsPerPage('step1')}
-            />
-            <Progress open={this.integrationStore.dialogOpen}
-                      onClose={this.integrationStore.closeDialog} message={"Fetching programs"}/>
-        </div>
-    }
+  render() {
+    return (
+      <div>
+        <InputField
+          label="Search"
+          type="text"
+          fullWidth
+          value={this.integrationStore.search}
+          onChange={(value) => this.integrationStore.setSearch(value, "step1")}
+        />
+        <Table
+          columns={["displayName", "programType", "lastUpdated"]}
+          rows={this.integrationStore.programs}
+          contextMenuActions={this.integrationStore.multipleCma}
+          primaryAction={this.integrationStore.executeEditIfAllowed}
+        />
+        <TablePagination
+          component="div"
+          count={this.integrationStore.totalPrograms}
+          rowsPerPageOptions={[5, 10, 25, 50, 100]}
+          rowsPerPage={this.integrationStore.paging["step1"]["rowsPerPage"]}
+          page={this.integrationStore.paging["step1"]["page"]}
+          backIconButtonProps={{
+            "aria-label": "Previous Page",
+          }}
+          nextIconButtonProps={{
+            "aria-label": "Next Page",
+          }}
+          onChangePage={this.integrationStore.handleChangeElementPage("step1")}
+          onChangeRowsPerPage={this.integrationStore.handleChangeElementRowsPerPage(
+            "step1"
+          )}
+        />
+        <Progress
+          open={this.integrationStore.dialogOpen}
+          onClose={this.integrationStore.closeDialog}
+          message={"Fetching programs"}
+        />
+      </div>
+    );
+  }
 }
 
 export default withStyles(styles)(Step1);

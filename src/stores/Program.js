@@ -1,11 +1,8 @@
 import { action, computed, observable } from "mobx";
-import _ from "lodash";
+import _, { fromPairs, flatten } from "lodash";
 import moment from "moment";
-
 import { NotificationManager } from "react-notifications";
-
 import XLSX from "xlsx";
-
 import axios from "axios";
 import {
   encodeData,
@@ -16,8 +13,8 @@ import {
 } from "../utils/utils";
 import Param from "./Param";
 import OrganisationUnit from "./OrganisationUnit";
-
 import ProgramWorker from "workerize-loader?inline!./Workers"; // eslint-disable-line import/no-webpack-loader-syntax
+import { generateUid } from "../utils/uid";
 
 let instance = new ProgramWorker();
 
@@ -32,7 +29,7 @@ class Program {
   @observable programTrackedEntityAttributes = [];
   @observable trackedEntityType;
   @observable trackedEntity;
-  @observable mappingId = 1;
+  @observable mappingId = generateUid();
   @observable running = false;
 
   @observable orgUnitColumn = "";
@@ -150,11 +147,23 @@ class Program {
   @observable message = "";
   @observable incidentDateProvided = false;
   @observable processed;
-  @observable data;
+  @observable data = [];
   @observable isUploadingFromPage;
 
   @observable selectIncidentDatesInFuture;
   @observable selectEnrollmentDatesInFuture;
+  @observable isDHIS2 = false;
+  @observable attributes = true;
+  @observable remotePrograms = [];
+  @observable remoteProgram = {};
+  @observable remoteId = "";
+
+  @observable trackedEntityInstances = true;
+  @observable enrollments = true;
+  @observable events = false;
+
+  @observable remoteStage = null;
+  @observable remoteTrackedEntityTypes = {};
 
   constructor(
     lastUpdated,
@@ -177,6 +186,79 @@ class Program {
   @action setDialogOpen = (val) => (this.dialogOpen = val);
   @action openDialog = () => this.setDialogOpen(true);
   @action closeDialog = () => this.setDialogOpen(false);
+  @action setRemotePrograms = (val) => (this.remotePrograms = val);
+  @action setRemoteProgram = (val) => (this.remoteProgram = val);
+  @action setRemoteTrackedEntityTypes = (val) =>
+    (this.remoteTrackedEntityTypes = val);
+
+  @action handleTrackedEntityInstances = (event) => {
+    this.trackedEntityInstances = event.target.checked;
+  };
+
+  @action handleErollments = (event) => {
+    this.enrollments = event.target.checked;
+  };
+
+  @action handleEvents = (event) => {
+    this.events = event.target.checked;
+  };
+
+  @action fromDHIS2 = async () => {
+    if (this.url && this.username && this.password) {
+      const { data } = await axios.get(`${this.url}/api/programs.json`, {
+        params: {
+          paging: false,
+          fields: "id,name",
+        },
+        withCredentials: true,
+        auth: {
+          username: this.username,
+          password: this.password,
+        },
+      });
+      this.setRemotePrograms(
+        data.programs.map(({ id, name }) => {
+          return {
+            label: name,
+            value: id,
+          };
+        })
+      );
+    }
+  };
+
+  @action handleIsDHIS2 = async (event) => {
+    this.isDHIS2 = event.target.checked;
+
+    if (this.isDHIS2) {
+      await this.fromDHIS2();
+    }
+  };
+
+  @action handleRemoteProgramChange = async (program) => {
+    this.remoteId = program;
+    if (program) {
+      const { data } = await axios.get(
+        `${this.url}/api/programs/${program.value}.json`,
+        {
+          params: {
+            fields:
+              "id,name,programType,trackedEntityType,trackedEntity,programTrackedEntityAttributes[trackedEntityAttribute[id,code,name]],programStages[id,name,programStageDataElements[dataElement[id,code,name]]],organisationUnits[id,code,name]",
+          },
+          withCredentials: true,
+          auth: {
+            username: this.username,
+            password: this.password,
+          },
+        }
+      );
+      this.setRemoteProgram(data);
+    }
+  };
+
+  @action handleRemoteProgramStageChange = async (program) => {
+    this.remoteStage = program;
+  };
 
   @action
   setD2 = (d2) => {
@@ -290,8 +372,9 @@ class Program {
   handleEventDateColumnSelectChange = (value) => (this.eventDateColumn = value);
 
   @action
-  handleEnrollmentDateColumnSelectChange = (value) =>
-    (this.enrollmentDateColumn = value);
+  handleEnrollmentDateColumnSelectChange = (value) => {
+    this.enrollmentDateColumn = value;
+  };
 
   @action
   handleIncidentDateColumnSelectChange = (value) =>
@@ -347,7 +430,6 @@ class Program {
       if (sheets.length > 0) {
         await this.setSelectedSheet(sheets[0]);
       }
-
       this.closeDialog();
     } else if (rejected.length > 0) {
       NotificationManager.error(
@@ -359,38 +441,41 @@ class Program {
   };
 
   @action pullData = async () => {
-    let param = "";
-
-    if (this.params.length > 0) {
-      param = encodeData(this.params);
-    }
-
     this.setDataSource("api");
 
     if (this.url) {
       this.openDialog();
       try {
         let response;
-        if (this.username !== "" && this.password !== "") {
-          this.setPulling(true);
-          response = await axios.get(this.url + "?" + param, {
-            params: {},
-            withCredentials: true,
-            auth: {
-              username: this.username,
-              password: this.password,
-            },
-          });
+        if (this.isDHIS2) {
         } else {
-          response = await axios.get(this.url + "?" + param);
-        }
+          let param = "";
+          if (this.params.length > 0) {
+            param = encodeData(this.params);
+          }
 
-        if (response.status === 200) {
-          let { data } = response;
-          if (this.responseKey && this.responseKey !== "") {
-            this.setData(data[this.responseKey]);
+          if (this.username !== "" && this.password !== "") {
+            this.setPulling(true);
+            response = await axios.get(
+              param !== "" ? this.url + "?" + param : this.url,
+              {
+                withCredentials: true,
+                auth: {
+                  username: this.username,
+                  password: this.password,
+                },
+              }
+            );
           } else {
-            this.setData(data);
+            response = await axios.get(this.url + "?" + param);
+          }
+          if (response.status === 200) {
+            let { data } = response;
+            if (this.responseKey && this.responseKey !== "") {
+              this.setData(data[this.responseKey]);
+            } else {
+              this.setData(data);
+            }
           }
         }
       } catch (e) {
@@ -461,7 +546,10 @@ class Program {
     if (val) {
       this.setProcessed(null);
       const data = XLSX.utils.sheet_to_json(this.workbook.Sheets[val.value], {
-        range: this.headerRow - 1,
+        header: 1,
+        defval: "",
+        raw: false,
+        rawNumbers: false,
       });
       this.setData(data);
       this.computeUnits();
@@ -511,36 +599,19 @@ class Program {
     let foundEntities = [];
     try {
       if (this.uniqueIds.length > 0) {
-        const chunked = _.chunk(this.uniqueIds, 100);
+        const chunked = _.chunk(this.uniqueIds, 250);
         for (const ch of chunked) {
-          let { trackedEntityInstances: data } = await api.get(
+          let { trackedEntityInstances } = await api.get(
             "trackedEntityInstances.json",
             {
               filter: `${this.uniqueAttribute}:IN:${ch.join(";")}`,
               ouMode: "ALL",
-              fields: "trackedEntityInstance",
+              trackedEntityType: this.trackedEntityType.id,
+              skipPaging: true,
+              fields: "*",
             }
           );
-          if (data.length > 0) {
-            const instances = data
-              .map((r) => r.trackedEntityInstance)
-              .join(";");
-            const params = {
-              paging: false,
-              ouMode: "ALL",
-              program: this.id,
-              trackedEntityInstance: instances,
-              fields:
-                "trackedEntityInstance,orgUnit,attributes[attribute,value],enrollments[enrollment,program," +
-                "trackedEntityInstance,trackedEntityType,trackedEntity,enrollmentDate,incidentDate,orgUnit,events[program,trackedEntityInstance,event," +
-                "eventDate,status,completedDate,coordinate,programStage,orgUnit,dataValues[dataElement,value]]]",
-            };
-            const { trackedEntityInstances } = await api.get(
-              "trackedEntityInstances",
-              params
-            );
-            foundEntities = [...foundEntities, ...trackedEntityInstances];
-          }
+          foundEntities = [...foundEntities, ...trackedEntityInstances];
         }
         return foundEntities;
       }
@@ -596,9 +667,10 @@ class Program {
     }
   };
 
-  @action create = async () => {
-    this.setDisplayProgress(true);
-    this.openDialog();
+  @action insertData = async (openDialog = true) => {
+    if (openDialog) {
+      this.openDialog();
+    }
     const {
       newTrackedEntityInstances,
       newEnrollments,
@@ -608,7 +680,7 @@ class Program {
     } = this.processed;
     try {
       if (newTrackedEntityInstances && newTrackedEntityInstances.length > 0) {
-        const chunkedTEI = _.chunk(newTrackedEntityInstances, 250);
+        const chunkedTEI = _.chunk(newTrackedEntityInstances, 2000);
         const total = newTrackedEntityInstances.length;
         let current = 0;
         this.setMessage(`Creating tracked entities ${current}/${total}`);
@@ -616,11 +688,13 @@ class Program {
         for (const tei of chunkedTEI) {
           current = current + tei.length;
           this.setMessage(`Creating tracked entities ${current}/${total}`);
-          const instancesResults = await this.insertTrackedEntityInstance({
-            trackedEntityInstances: tei,
-          });
-          instancesResults.type = "trackedEntityInstance";
-          this.setResponses(instancesResults);
+          try {
+            const instancesResults = await this.insertTrackedEntityInstance({
+              trackedEntityInstances: tei,
+            });
+            instancesResults.type = "trackedEntityInstance";
+            this.setResponses(instancesResults);
+          } catch (error) {}
         }
         this.setMessage("Finished creating tracked entities");
       }
@@ -632,17 +706,18 @@ class Program {
         const total = trackedEntityInstancesUpdate.length;
         let current = 0;
         this.setMessage(`Updating tracked entities ${current}/${total}`);
-        const chunkedTEI = _.chunk(trackedEntityInstancesUpdate, 250);
+        const chunkedTEI = _.chunk(trackedEntityInstancesUpdate, 2000);
         for (const tei of chunkedTEI) {
           current = current + tei.length;
           this.setMessage(`Updating tracked entities ${current}/${total}`);
-          const instancesResults = await this.insertTrackedEntityInstance({
-            trackedEntityInstances: tei,
-          });
-          instancesResults.type = "trackedEntityInstance";
-          this.setResponses(instancesResults);
+          try {
+            const instancesResults = await this.insertTrackedEntityInstance({
+              trackedEntityInstances: tei,
+            });
+            instancesResults.type = "trackedEntityInstance";
+            this.setResponses(instancesResults);
+          } catch (error) {}
         }
-
         this.setMessage("Finished updating tracked entities");
       }
 
@@ -652,19 +727,20 @@ class Program {
         this.setMessage(
           `Creating enrollments for tracked entities ${current}/${total}`
         );
-        const chunkedEnrollments = _.chunk(newEnrollments, 250);
+        const chunkedEnrollments = _.chunk(newEnrollments, 2000);
         for (const enrollments of chunkedEnrollments) {
           current = current + enrollments.length;
           this.setMessage(
             `Creating enrollments for tracked entities ${current}/${total}`
           );
-          const enrollmentsResults = await this.insertEnrollment({
-            enrollments: enrollments,
-          });
-          enrollmentsResults.type = "enrollment";
-          this.setResponses(enrollmentsResults);
+          try {
+            const enrollmentsResults = await this.insertEnrollment({
+              enrollments: enrollments,
+            });
+            enrollmentsResults.type = "enrollment";
+            this.setResponses(enrollmentsResults);
+          } catch (error) {}
         }
-
         this.setMessage("Finished creating enrollments for tracked entities");
       }
 
@@ -672,17 +748,18 @@ class Program {
         const total = newEvents.length;
         let current = 0;
         this.setMessage(`Creating events ${current}/${total}`);
-        const chunkedEvents = _.chunk(newEvents, 250);
+        const chunkedEvents = _.chunk(newEvents, 2000);
 
         for (const events of chunkedEvents) {
           current = current + events.length;
           this.setMessage(`Creating events ${current}/${total}`);
-          const eventsResults = await this.insertEvent({
-            events,
-          });
-
-          eventsResults.type = "event";
-          this.setResponses(eventsResults);
+          try {
+            const eventsResults = await this.insertEvent({
+              events,
+            });
+            eventsResults.type = "event";
+            this.setResponses(eventsResults);
+          } catch (error) {}
         }
         this.setMessage("Finished creating events");
       }
@@ -691,54 +768,185 @@ class Program {
         const total = eventsUpdate.length;
         let current = 0;
         this.setMessage(`Updating events ${current}/${total}`);
-        const chunkedEvents = _.chunk(eventsUpdate, 250);
-
+        const chunkedEvents = _.chunk(eventsUpdate, 2000);
         for (const events of chunkedEvents) {
           current = current + events.length;
           this.setMessage(`Updating events ${current}/${total}`);
-          const eventsResults = await Promise.all(
-            this.updateDHISEvents(events)
-          );
-          this.setResponses(eventsResults);
+          try {
+            const eventsResults = await Promise.all(
+              this.updateDHISEvents(events)
+            );
+            this.setResponses(eventsResults);
+          } catch (error) {}
         }
         this.setMessage("Finished updating events");
       }
-
       this.setPulledData(null);
       this.setWorkbook(null);
       await this.setSelectedSheet(null);
-      this.setDisplayProgress(false);
       this.setMessage("");
-      this.closeDialog();
+      if (openDialog) {
+        this.closeDialog();
+      }
     } catch (e) {
       this.setResponses(e);
-      console.log(e);
-      this.closeDialog();
+      if (openDialog) {
+        this.closeDialog();
+      }
     }
   };
 
-  @action saveMapping = async (mappings) => {
-    const mapping = _.findIndex(mappings, {
-      mappingId: this.mappingId,
-    });
+  @action create = async () => {
+    if (this.isDHIS2) {
+      this.setDataSource("api");
+      const {
+        programTrackedEntityAttributes,
+        programStages,
+        trackedEntityType,
+        trackedEntity,
+        id,
+      } = this.remoteProgram;
+      const stage = programStages.find((s) => s.id === this.remoteStage.value);
+      const calculatedAttributes = fromPairs(
+        programTrackedEntityAttributes.map((ptea) => [
+          ptea.trackedEntityAttribute.name,
+          "",
+        ])
+      );
 
-    if (mapping !== -1) {
-      mappings.splice(mapping, 1, this);
+      let tei = [];
+      let page = 1;
+      this.openDialog();
+      do {
+        let params = {
+          ouMode: "ALL",
+          fields: "*",
+          pageSize: 250,
+          page,
+        };
+
+        if (trackedEntityType) {
+          params = { ...params, trackedEntityType: trackedEntityType.id };
+        } else if (trackedEntity) {
+          params = { ...params, trackedEntity: trackedEntity.id };
+        } else {
+          params = { ...params, program: id };
+        }
+
+        const {
+          data: { trackedEntityInstances },
+        } = await axios.get(`${this.url}/api/trackedEntityInstances.json`, {
+          withCredentials: true,
+          params,
+          auth: {
+            username: this.username,
+            password: this.password,
+          },
+        });
+        const instances = trackedEntityInstances.map(
+          ({
+            attributes,
+            enrollments,
+            relationships,
+            notes,
+            programOwners,
+            ...instance
+          }) => {
+            const identifies = {
+              ...instance,
+            };
+            const attr = {
+              ...calculatedAttributes,
+              ...fromPairs(
+                attributes.map(({ displayName, value }) => [displayName, value])
+              ),
+            };
+            const enrolls = enrollments
+              .filter((e) => e.program === id && e.status === "ACTIVE")
+              .map(
+                ({
+                  events,
+                  notes,
+                  programStage,
+                  relationships,
+                  enrollmentDate,
+                  incidentDate,
+                  program,
+                  attributes,
+                  ...ens
+                }) => {
+                  return events
+                    .filter((e) => e.programStage === this.remoteStage.value)
+                    .map(
+                      ({
+                        dataValues,
+                        programStage,
+                        orgUnit: eventOrgUnit,
+                        relationships,
+                        notes,
+                        eventDate,
+                        ...eves
+                      }) => {
+                        const calculatedElements = stage.programStageDataElements.map(
+                          (psde) => {
+                            const currentElement = dataValues.find(
+                              (dv) => dv.dataElement === psde.dataElement.id
+                            );
+
+                            if (currentElement) {
+                              return [
+                                psde.dataElement.name,
+                                currentElement.value,
+                              ];
+                            }
+
+                            return [psde.dataElement.name, ""];
+                          }
+                        );
+                        return {
+                          ...ens,
+                          programStage,
+                          enrollmentDate: moment(
+                            enrollmentDate,
+                            "YYYY-MM-DD"
+                          ).format("YYYY-MM-DD"),
+                          incidentDate: moment(
+                            incidentDate,
+                            "YYYY-MM-DD"
+                          ).format("YYYY-MM-DD"),
+                          eventDate: moment(eventDate, "YYYY-MM-DD").format(
+                            "YYYY-MM-DD"
+                          ),
+                          program,
+                          eventOrgUnit,
+                          ...identifies,
+                          ...attr,
+                          ...eves,
+                          ...fromPairs(calculatedElements),
+                        };
+                      }
+                    );
+                }
+              );
+            return flatten(enrolls);
+          }
+        );
+        this.setData(_.flatten(instances));
+        await this.process(false);
+        await this.insertData(false);
+        tei = trackedEntityInstances;
+        page = page + 1;
+      } while (tei.length > 0);
+      this.closeDialog();
     } else {
-      mappings = [...mappings, this];
+      await this.insertData();
     }
+  };
 
-    const toBeSaved = mappings.map((p) => {
-      return p.canBeSaved;
-    });
+  @action saveMapping = async () => {
     try {
       const namespace = await this.d2.dataStore.get("bridge");
-      namespace.set("mappings", toBeSaved);
-      NotificationManager.success(
-        "Success",
-        "Mapping saved successfully",
-        5000
-      );
+      namespace.set(this.mappingId, this.canBeSaved);
     } catch (e) {
       NotificationManager.error(
         "Error",
@@ -748,21 +956,12 @@ class Program {
     }
   };
 
-  @action deleteMapping = async (mappings) => {
-    const mapping = _.findIndex(mappings, {
-      mappingId: this.mappingId,
-    });
-    mappings.splice(mapping, 1);
-
-    mappings = mappings.map((p) => {
-      return p.canBeSaved;
-    });
-
-    const namespace = await this.d2.dataStore.get("bridge");
-    namespace.set("mappings", mappings);
+  @action deleteMapping = async () => {
+    const api = this.d2.Api.getApi();
+    await api.get(`dataStore/bridge/${this.mappingId}`);
   };
 
-  @action scheduleProgram = (mappings) => {
+  @action scheduleProgram = () => {
     if (this.scheduleTime !== 0) {
       setInterval(
         action(async () => {
@@ -771,7 +970,7 @@ class Program {
             await this.pullData();
             await this.create();
             this.lastRun = moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
-            await this.saveMapping(mappings);
+            await this.saveMapping();
             this.setRunning(false);
           }
         }),
@@ -782,15 +981,15 @@ class Program {
     }
   };
 
-  @action runWhenURL = (mappings) => {
+  @action runWhenURL = async () => {
     this.setRunning(true);
     this.pullData();
     this.create();
     this.lastRun = moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
-    this.saveMapping(mappings);
+    await this.saveMapping();
   };
 
-  @action runWithFile = (mappings) => {
+  @action runWithFile = () => {
     if (this.scheduleTime !== 0) {
       setInterval(
         action(() => {
@@ -799,7 +998,7 @@ class Program {
             this.pullData();
             this.create();
             this.lastRun = moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
-            this.saveMapping(mappings);
+            this.saveMapping();
             this.setRunning(false);
           }
         }),
@@ -843,57 +1042,122 @@ class Program {
   };
 
   @action computeUnits = () => {
-    if (
-      this.orgUnitColumn &&
-      this.data.length > 0 &&
-      _.keys(this.data[0]).indexOf(this.orgUnitColumn.value) !== -1
-    ) {
-      let units = this.data.map((d) => {
-        return new OrganisationUnit("", d[this.orgUnitColumn.value], "");
-      });
+    if (this.isDHIS2) {
+      this.setOrgUnitColumn({ value: "orgUnitName", label: "orgUnitName" });
+      const organisations = this.remoteProgram.organisationUnits.map((o) => {
+        const ou = new OrganisationUnit(o.id, o.name, o.code);
 
-      units = _.uniqBy(units, (v) => JSON.stringify(v)).map((org) => {
-        const findInPrevious = this.sourceOrganisationUnits.find(
-          (su) => su.name === org.name
-        );
+        let findInPrevious = undefined;
+
+        if (!findInPrevious) {
+          findInPrevious = this.sourceOrganisationUnits.find(
+            (su) => su.id === o.id
+          );
+        }
+
+        if (!findInPrevious) {
+          findInPrevious = this.sourceOrganisationUnits.find(
+            (su) => su.code === o.code
+          );
+        }
+
+        if (!findInPrevious) {
+          findInPrevious = this.sourceOrganisationUnits.find(
+            (su) => su.name === o.name
+          );
+        }
         if (findInPrevious) {
-          org.setMapping(findInPrevious.mapping);
+          ou.setMapping(findInPrevious.mapping);
         } else {
-          let foundOU = undefined;
-          const foundOUById = _.find(this.organisationUnits, (o) => {
-            return o.id === org.name;
-          });
-          if (foundOUById) {
-            foundOU = foundOUById;
-          } else {
-            const foundOUByCode = _.find(this.organisationUnits, (o) => {
-              return o.code === org.name;
-            });
-
-            if (foundOUByCode) {
-              foundOU = foundOUByCode;
-            } else {
-              const foundOUByName = _.find(this.organisationUnits, (o) => {
-                return org.name === o.name;
-              });
-
-              if (foundOUByName) {
-                foundOU = foundOUByName;
-              }
-            }
+          let findInPrevious = undefined;
+          if (!findInPrevious) {
+            findInPrevious = this.organisationUnits.find(
+              (su) => su.id === o.id
+            );
           }
-          if (foundOU) {
-            org.setMapping({ label: foundOU.name, value: foundOU.id });
+
+          if (!findInPrevious) {
+            findInPrevious = this.organisationUnits.find(
+              (su) => su.code === o.code
+            );
+          }
+
+          if (!findInPrevious) {
+            findInPrevious = this.organisationUnits.find(
+              (su) => su.name === o.name
+            );
+          }
+
+          if (findInPrevious) {
+            ou.setMapping({
+              label: findInPrevious.name,
+              value: findInPrevious.id,
+            });
           }
         }
-        return org;
+        return ou;
       });
-      this.setSourceOrganisationUnit(units);
+      this.setSourceOrganisationUnit(organisations);
+    } else {
+      if (
+        this.orgUnitColumn &&
+        this.realData.length > 0 &&
+        _.keys(this.realData[0]).indexOf(this.orgUnitColumn.value) !== -1
+      ) {
+        let units = this.realData.map((d) => {
+          return new OrganisationUnit("", d[this.orgUnitColumn.value], "");
+        });
+
+        units = _.uniqBy(units, (v) => JSON.stringify(v)).map((org) => {
+          let findInPrevious = undefined;
+
+          if (!findInPrevious) {
+            findInPrevious = this.sourceOrganisationUnits.find(
+              (su) => su.name === org.name
+            );
+          }
+
+          if (findInPrevious) {
+            org.setMapping(findInPrevious.mapping);
+          } else {
+            let foundOU = undefined;
+            const foundOUById = _.find(this.organisationUnits, (o) => {
+              return o.id === org.name;
+            });
+            if (foundOUById) {
+              foundOU = foundOUById;
+            } else {
+              const foundOUByCode = _.find(this.organisationUnits, (o) => {
+                return o.code === org.name;
+              });
+
+              if (foundOUByCode) {
+                foundOU = foundOUByCode;
+              } else {
+                const foundOUByName = _.find(this.organisationUnits, (o) => {
+                  return org.name === o.name;
+                });
+
+                if (foundOUByName) {
+                  foundOU = foundOUByName;
+                }
+              }
+            }
+            if (foundOU) {
+              org.setMapping({ label: foundOU.name, value: foundOU.id });
+            }
+          }
+          return org;
+        });
+        this.setSourceOrganisationUnit(units);
+      }
     }
   };
 
-  @action process = async () => {
-    this.openDialog();
+  @action process = async (openDialog = true) => {
+    if (openDialog) {
+      this.openDialog();
+    }
     const program = JSON.parse(JSON.stringify(this.canBeSaved));
     const uniqueColumn = JSON.parse(JSON.stringify(this.uniqueColumn));
     const data = JSON.parse(JSON.stringify(this.withoutDuplicates));
@@ -901,6 +1165,7 @@ class Program {
     if (this.isTracker) {
       this.setMessage("Fetching previous tracked entity instances");
       const searchedInstances = await this.searchTrackedEntities();
+
       const groupedEntities = groupEntities(
         this.uniqueAttribute,
         searchedInstances
@@ -924,58 +1189,61 @@ class Program {
       );
     }
     this.setProcessed(dataResponse);
-    this.closeDialog();
+    if (openDialog) {
+      this.closeDialog();
+    }
   };
 
   @computed get withoutDuplicates() {
-    if (!this.isTracker && this.data) {
-      let filteredData = [];
-
-      const programStage = this.programStages[0];
-      if (
-        programStage.elementsWhichAreIdentifies.length > 0 &&
-        programStage.eventDateIdentifiesEvent
-      ) {
-        const grped = _.groupBy(this.data, (v) => {
-          const ele = programStage.elementsWhichAreIdentifies
-            .map((e) => {
-              return v[e.column.value];
-            })
-            .join("@");
-          return `${ele}${moment(v[programStage.eventDateColumn.value]).format(
-            "YYYY-MM-DD"
-          )}`;
-        });
-        _.forOwn(grped, (v) => {
-          filteredData = [...filteredData, v[0]];
-        });
-        return filteredData;
-      } else if (programStage.elementsWhichAreIdentifies.length) {
-        const grped = _.groupBy(this.data, (v) => {
-          return programStage.elementsWhichAreIdentifies
-            .map((e) => {
-              return v[e.column.value];
-            })
-            .join("@");
-        });
-        _.forOwn(grped, (v) => {
-          filteredData = [...filteredData, v[0]];
-        });
-        return filteredData;
-      } else if (programStage.eventDateIdentifiesEvent) {
-        const grped = _.groupBy(this.data, (v) => {
-          return moment(v[programStage.eventDateColumn.value]).format(
-            "YYYY-MM-DD"
-          );
-        });
-        _.forOwn(grped, (v) => {
-          filteredData = [...filteredData, v[0]];
-        });
-        return filteredData;
+    if (this.realData) {
+      if (!this.isTracker) {
+        let filteredData = [];
+        const programStage = this.programStages[0];
+        if (
+          programStage.elementsWhichAreIdentifies.length > 0 &&
+          programStage.eventDateIdentifiesEvent
+        ) {
+          const grped = _.groupBy(this.realData, (v) => {
+            const ele = programStage.elementsWhichAreIdentifies
+              .map((e) => {
+                return v[e.column.value];
+              })
+              .join("@");
+            return `${ele}${moment(
+              v[programStage.eventDateColumn.value]
+            ).format("YYYY-MM-DD")}`;
+          });
+          _.forOwn(grped, (v) => {
+            filteredData = [...filteredData, v[0]];
+          });
+          return filteredData;
+        } else if (programStage.elementsWhichAreIdentifies.length) {
+          const grped = _.groupBy(this.realData, (v) => {
+            return programStage.elementsWhichAreIdentifies
+              .map((e) => {
+                return v[e.column.value];
+              })
+              .join("@");
+          });
+          _.forOwn(grped, (v) => {
+            filteredData = [...filteredData, v[0]];
+          });
+          return filteredData;
+        } else if (programStage.eventDateIdentifiesEvent) {
+          const grped = _.groupBy(this.realData, (v) => {
+            return moment(v[programStage.eventDateColumn.value]).format(
+              "YYYY-MM-DD"
+            );
+          });
+          _.forOwn(grped, (v) => {
+            filteredData = [...filteredData, v[0]];
+          });
+          return filteredData;
+        }
       }
+      return this.realData;
     }
-
-    return this.data;
+    return [];
   }
 
   @computed
@@ -996,15 +1264,71 @@ class Program {
 
   @computed
   get columns() {
-    if (this.data) {
-      return _.keys(this.data[0]).map((e) => {
+    if (this.isDHIS2) {
+      let cols = this.remoteProgram.programTrackedEntityAttributes.map((a) => {
         return {
-          label: e,
-          value: e,
+          label: a.trackedEntityAttribute.name,
+          value: a.trackedEntityAttribute.name,
         };
       });
+
+      cols = [
+        { label: "enrollmentDate", value: "enrollmentDate" },
+        { label: "incidentDate", value: "incidentDate" },
+        ...cols,
+        { label: "eventDate", value: "eventDate" },
+      ];
+
+      if (this.events) {
+        const stage = this.remoteProgram.programStages.find(
+          (a) => a.id === this.remoteStage.value
+        );
+
+        const elements = stage.programStageDataElements.map((e) => {
+          return {
+            label: e.dataElement.name,
+            value: e.dataElement.name,
+          };
+        });
+
+        cols = [...cols, ...elements];
+      }
+      return cols;
+    } else {
+      if (
+        this.data &&
+        this.data.length > 0 &&
+        this.headerRow &&
+        this.dataSource !== "api"
+      ) {
+        return this.data[this.headerRow - 1].map((e) => {
+          return {
+            label: e,
+            value: e,
+          };
+        });
+      }
+      if (this.data && this.data.length > 0 && this.dataSource === "api") {
+        return Object.keys(this.data[0]).map((e) => {
+          return {
+            label: e,
+            value: e,
+          };
+        });
+      }
     }
     return [];
+  }
+
+  @computed
+  get realData() {
+    if (this.isDHIS2 || this.dataSource === "api") {
+      return this.data;
+    } else {
+      return this.data.slice(this.dataStartRow - 1).map((d) => {
+        return fromPairs(d.map((d, i) => [this.columns[i].value, d]));
+      });
+    }
   }
 
   @computed
@@ -1055,6 +1379,13 @@ class Program {
       "categoryCombo",
       "selectIncidentDatesInFuture",
       "selectEnrollmentDatesInFuture",
+      "isDHIS2",
+      "trackedEntityInstances",
+      "enrollments",
+      "events",
+      "remoteStage",
+      "remoteId",
+      "remoteProgram",
     ]);
   }
 
@@ -1205,8 +1536,12 @@ class Program {
 
   @computed
   get uniqueIds() {
-    if (this.uniqueColumn !== null && this.data && this.data.length > 0) {
-      let foundIds = this.data
+    if (
+      this.uniqueColumn !== null &&
+      this.realData &&
+      this.realData.length > 0
+    ) {
+      let foundIds = this.realData
         .map((d) => {
           return d[this.uniqueColumn];
         })
@@ -1363,7 +1698,6 @@ class Program {
   @computed get currentInstanceUpdates() {
     if (this.processed) {
       const { trackedEntityInstancesUpdate } = this.processed;
-
       return trackedEntityInstancesUpdate.map((tei) => {
         const attributes = tei.attributes.map((a) => {
           return { ...a, name: this.processedAttributes[a.attribute] };
@@ -1517,6 +1851,15 @@ class Program {
     if (this.categoryCombo) {
       return this.categoryCombo.categories.map((category) => {
         return { label: category.name, value: category.id };
+      });
+    }
+    return [];
+  }
+
+  @computed get stages() {
+    if (this.remoteProgram) {
+      return this.remoteProgram.programStages.map(({ id, name }) => {
+        return { label: name, value: id };
       });
     }
     return [];
