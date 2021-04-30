@@ -7,6 +7,9 @@ import * as serviceWorker from "./serviceWorker";
 import IntegrationStore from "./stores/IntegrationStore";
 import { init } from "d2";
 import { Provider } from "mobx-react";
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 const config = {};
 if (process.env.NODE_ENV === "development") {
