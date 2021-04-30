@@ -680,7 +680,7 @@ class Program {
     } = this.processed;
     try {
       if (newTrackedEntityInstances && newTrackedEntityInstances.length > 0) {
-        const chunkedTEI = _.chunk(newTrackedEntityInstances, 100);
+        const chunkedTEI = _.chunk(newTrackedEntityInstances, 2000);
         const total = newTrackedEntityInstances.length;
         let current = 0;
         this.setMessage(`Creating tracked entities ${current}/${total}`);
@@ -706,7 +706,7 @@ class Program {
         const total = trackedEntityInstancesUpdate.length;
         let current = 0;
         this.setMessage(`Updating tracked entities ${current}/${total}`);
-        const chunkedTEI = _.chunk(trackedEntityInstancesUpdate, 100);
+        const chunkedTEI = _.chunk(trackedEntityInstancesUpdate, 2000);
         for (const tei of chunkedTEI) {
           current = current + tei.length;
           this.setMessage(`Updating tracked entities ${current}/${total}`);
@@ -727,7 +727,7 @@ class Program {
         this.setMessage(
           `Creating enrollments for tracked entities ${current}/${total}`
         );
-        const chunkedEnrollments = _.chunk(newEnrollments, 100);
+        const chunkedEnrollments = _.chunk(newEnrollments, 2000);
         for (const enrollments of chunkedEnrollments) {
           current = current + enrollments.length;
           this.setMessage(
@@ -748,7 +748,7 @@ class Program {
         const total = newEvents.length;
         let current = 0;
         this.setMessage(`Creating events ${current}/${total}`);
-        const chunkedEvents = _.chunk(newEvents, 100);
+        const chunkedEvents = _.chunk(newEvents, 2000);
 
         for (const events of chunkedEvents) {
           current = current + events.length;
@@ -768,7 +768,7 @@ class Program {
         const total = eventsUpdate.length;
         let current = 0;
         this.setMessage(`Updating events ${current}/${total}`);
-        const chunkedEvents = _.chunk(eventsUpdate, 100);
+        const chunkedEvents = _.chunk(eventsUpdate, 2000);
         for (const events of chunkedEvents) {
           current = current + events.length;
           this.setMessage(`Updating events ${current}/${total}`);
