@@ -38,7 +38,7 @@
     "shortid": "^2.2.14",
     "source-map-explorer": "^2.1.0",
     "ssf": "^0.11.2",
-    "xlsx": "^0.16.9"
+    "xlsx": "^0.17.0"
   },
   "scripts": {
     "analyze": "source-map-explorer 'build/static/js/*.js'",
